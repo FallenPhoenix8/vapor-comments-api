@@ -7,7 +7,7 @@ FROM swift:6.0-noble AS build
 RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
     && apt-get -q update \
     && apt-get -q dist-upgrade -y \
-    && apt-get install -y libjemalloc-dev
+    && apt-get install -y libjemalloc-dev nodejs npm
 
 # Set up a build area
 WORKDIR /build
@@ -23,7 +23,11 @@ RUN swift package resolve \
 # Copy entire repo into container
 COPY . .
 
-# Build the application, with optimizations, with static linking, and using jemalloc
+# Build frontend
+WORKDIR /build/Frontend
+RUN npm install && npm run build
+
+# Build the application
 # N.B.: The static version of jemalloc is incompatible with the static Swift runtime.
 RUN swift build -c release \
         --product App \
