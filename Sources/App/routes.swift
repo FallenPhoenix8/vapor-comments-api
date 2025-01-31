@@ -4,15 +4,15 @@ let fileManager: FileManager = .init()
 let wsManagerComments: WebSocketManager = .init(threadLabel: "wsManagerComments")
 
 func routes(_ app: Application) throws {
-    app.get { req async -> Response in
+    app.get { req -> Response in
         req.fileio.streamFile(at: "Public/index.html")
     }
 
-    app.get("hello") { _ async -> String in
-        "Hello, world!"
+    app.get("**") { req -> Response in
+        req.fileio.streamFile(at: "Public/index.html")
     }
 
-    app.get("comments") { req async throws -> Response in
+    app.get("comments") { req throws -> Response in
         let res = req.fileio.streamFile(at: "Sources/comments.json")
         return res
     }
