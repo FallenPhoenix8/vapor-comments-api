@@ -19,7 +19,8 @@ func routes(_ app: Application) throws {
 
     app.delete("delete-comment") { req async throws -> Response in
         let id = try req.query.get(Double.self, at: "id")
-        let comments = try await Comment.deleteComment(id: id)
+        let comment = try Comment(id: id)
+        let comments = try await comment.delete()
 
         try wsManagerComments.broadcast(JSONEncoder().encode(comments))
 
@@ -30,7 +31,7 @@ func routes(_ app: Application) throws {
         let content = try req.query.get(String.self, at: "content")
 
         let comment = Comment(content: content)
-        let comments = try await comment.addComment()
+        let comments = try await comment.add()
 
         try wsManagerComments.broadcast(JSONEncoder().encode(comments))
 

@@ -1,4 +1,5 @@
 import Foundation
+import Vapor
 
 public struct Comment: Decodable, Encodable, Sendable {
     public nonisolated(unsafe) static var comments: [Comment] = []
@@ -10,6 +11,20 @@ public struct Comment: Decodable, Encodable, Sendable {
     init(content: String) {
         id = Date().timeIntervalSince1970
         self.content = content
+    }
+
+    init(id: Double) throws {
+        self.id = id
+        var existingComment: Comment? = nil
+        for comment in type(of: self).comments {
+            if comment.id == id {
+                existingComment = comment
+            }
+        }
+        content = existingComment?.content ?? ""
+        if existingComment == nil {
+            throw Abort(.notFound)
+        }
     }
 
     static func updateCommentGlobalStorage() throws -> [Comment] {
@@ -32,7 +47,7 @@ public struct Comment: Decodable, Encodable, Sendable {
         return data
     }
 
-    func addComment() async throws -> [Comment] {
+    func add() async throws -> [Comment] {
         var comments = try type(of: self).updateCommentGlobalStorage()
         comments.append(self)
 
@@ -42,10 +57,11 @@ public struct Comment: Decodable, Encodable, Sendable {
         return comments
     }
 
-    static func deleteComment(id: Double) async throws -> [Comment] {
-        var comments = try updateCommentGlobalStorage()
+    func delete() async throws -> [Comment] {
+        let id = self.id
+        var comments = try type(of: self).updateCommentGlobalStorage()
         comments = comments.filter { $0.id != id }
-        _ = try await writeComments(comments: comments)
+        _ = try await type(of: self).writeComments(comments: comments)
         _ = try Comment.updateCommentGlobalStorage()
         return comments
     }
