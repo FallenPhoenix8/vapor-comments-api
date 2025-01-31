@@ -1,1 +1,0 @@
-watchexec -e swift -r swift run
