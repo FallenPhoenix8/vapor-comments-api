@@ -1,4 +1,4 @@
-**Running dev scripts**
+##Running dev scripts
 
 In order to run the dev scripts, you need to have `watchexec` installed on your system.
 If you are using brew package manager, it can be installed with following command:
@@ -20,7 +20,7 @@ And in order to run frontend development script, execute this script:
 sh ./dev-frontend.sh
 ```
 
-**Building for production**
+##Building for production
 
 You can build the project using `build.sh` script.
 
