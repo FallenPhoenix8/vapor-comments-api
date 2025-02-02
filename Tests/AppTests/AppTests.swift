@@ -1,6 +1,6 @@
 @testable import App
 
-// import Testing
+import Testing
 import VaporTesting
 
 @Suite("App Tests", .serialized)
