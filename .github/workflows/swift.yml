@@ -18,8 +18,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-    - name: Install Swift
-      run: brew install swift
+    - name: Set up Swift
+      uses: swift/setup-swift@v1
+      with:
+        swift-version: '6.0.3' # Specify the version you are using
     - name: Build
       run: sh build.sh
     - name: Run tests
