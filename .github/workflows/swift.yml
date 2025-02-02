@@ -1,6 +1,6 @@
 # This workflow will build a Swift project
 
-name: Swift
+name: Local
 
 on:
   push:
@@ -18,10 +18,8 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-    - name: Install Xcode
-      run: |
-        sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
-        sudo xcodebuild -runFirstLaunch
+    - name: Install Swift
+      run: brew install swift
     - name: Build
       run: sh build.sh
     - name: Run tests
