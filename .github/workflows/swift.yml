@@ -19,7 +19,7 @@ jobs:
       with:
         node-version: '22'
     - name: Set up Swift
-      uses: swift/setup-swift@v1
+      uses: actions/setup-swift@v1
       with:
         swift-version: '6.0.3' # Specify the version you are using
     - name: Build
