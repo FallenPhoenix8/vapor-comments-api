@@ -18,11 +18,10 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-    - name: Install Swift 6.0.0
+    - name: Install Xcode
       run: |
-        SWIFT_VERSION=6.0.0
-        wget https://swift.org/builds/swift-6.0.0-release/xcode/swift-6.0.0-RELEASE/swift-6.0.0-RELEASE-osx.pkg
-        sudo installer -pkg swift-6.0.0-RELEASE-osx.pkg -target /
+        sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+        sudo xcodebuild -runFirstLaunch
     - name: Build
       run: sh build.sh
     - name: Run tests
