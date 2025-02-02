@@ -18,10 +18,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-    - name: Set up Swift
+    - name: Install Swift 6.0.0
       run: |
-        brew install swift@latest
-        echo 'export PATH="/usr/local/opt/swift@latest/bin:$PATH"' >> $GITHUB_ENV
+        SWIFT_VERSION=6.0.0
+        wget https://swift.org/builds/swift-6.0.0-release/xcode/swift-6.0.0-RELEASE/swift-6.0.0-RELEASE-osx.pkg
+        sudo installer -pkg swift-6.0.0-RELEASE-osx.pkg -target /
     - name: Build
       run: sh build.sh
     - name: Run tests
