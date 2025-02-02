@@ -27,11 +27,16 @@ public struct Comment: Decodable, Encodable, Sendable {
         }
     }
 
-    static func updateCommentGlobalStorage() throws -> [Comment] {
+    static func updateCommentGlobalStorage() -> [Comment] {
         if !fileManager.fileExists(atPath: "Sources/comments.json") {
             _ = fileManager.createFile(atPath: "Sources/comments.json", contents: "[]".data(using: String.Encoding.utf8))
         }
-        let savedComments = try JSONDecoder().decode([Comment].self, from: Data(contentsOf: URL(fileURLWithPath: "Sources/comments.json")))
+        var savedComments: [Comment] = []
+        do {
+            savedComments = try JSONDecoder().decode([Comment].self, from: Data(contentsOf: URL(fileURLWithPath: "Sources/comments.json")))
+        } catch {
+            _ = Abort(.badRequest, reason: "Error decoding comments.json: \(error)")
+        }
         queue.sync {
             comments = savedComments
         }
@@ -39,30 +44,41 @@ public struct Comment: Decodable, Encodable, Sendable {
         return comments
     }
 
-    private static func writeComments(comments: [Comment]) async throws -> Data {
+    private static func writeComments(comments: [Comment]) async -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(comments)
-        try data.write(to: URL(fileURLWithPath: "Sources/comments.json"))
+        var data = Data()
+        do {
+            data = try encoder.encode(comments)
+        } catch {
+            _ = Abort(.badRequest, reason: "Error encoding comments: \(error)")
+        }
+
+        do {
+            try data.write(to: URL(fileURLWithPath: "Sources/comments.json"))
+        } catch let err {
+            _ = Abort(.internalServerError, reason: "Error writing comments.json: \(err)")
+        }
+
         return data
     }
 
     func add() async throws -> [Comment] {
-        var comments = try type(of: self).updateCommentGlobalStorage()
+        var comments = type(of: self).updateCommentGlobalStorage()
         comments.append(self)
 
-        _ = try await type(of: self).writeComments(comments: comments)
-        _ = try Comment.updateCommentGlobalStorage()
+        _ = await type(of: self).writeComments(comments: comments)
+        _ = Comment.updateCommentGlobalStorage()
 
         return comments
     }
 
     func delete() async throws -> [Comment] {
         let id = self.id
-        var comments = try type(of: self).updateCommentGlobalStorage()
+        var comments = type(of: self).updateCommentGlobalStorage()
         comments = comments.filter { $0.id != id }
-        _ = try await type(of: self).writeComments(comments: comments)
-        _ = try Comment.updateCommentGlobalStorage()
+        _ = await type(of: self).writeComments(comments: comments)
+        _ = Comment.updateCommentGlobalStorage()
         return comments
     }
 }
