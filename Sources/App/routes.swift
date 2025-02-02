@@ -12,12 +12,16 @@ func routes(_ app: Application) throws {
         req.fileio.streamFile(at: "Public/index.html")
     }
 
-    app.get("comments") { req throws -> Response in
+    app.get("api", "comments") { req throws -> Response in
+        if !fileManager.fileExists(atPath: "Sources/comments.json") {
+            _ = fileManager.createFile(atPath: "Sources/comments.json", contents: "[]".data(using: String.Encoding.utf8))
+        }
+
         let res = req.fileio.streamFile(at: "Sources/comments.json")
         return res
     }
 
-    app.delete("delete-comment") { req async throws -> Response in
+    app.delete("api", "delete-comment") { req async throws -> Response in
         var comments: [Comment] = []
         do {
             let id = try req.query.get(Double.self, at: "id")
@@ -36,7 +40,7 @@ func routes(_ app: Application) throws {
         return req.fileio.streamFile(at: "Sources/comments.json")
     }
 
-    app.post("add-comment") { req async throws -> Response in
+    app.post("api", "add-comment") { req async throws -> Response in
         let content = try req.query.get(String.self, at: "content")
 
         let comment = Comment(content: content)
@@ -47,7 +51,7 @@ func routes(_ app: Application) throws {
         return req.fileio.streamFile(at: "Sources/comments.json")
     }
 
-    app.webSocket("ws") { _, ws in
+    app.webSocket("ws", "comments") { _, ws in
         wsManagerComments.addConnection(ws)
     }
 }

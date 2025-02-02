@@ -19,7 +19,7 @@ struct AppTests {
     @Test("Test Adding a Comment")
     func addComment() async throws {
         try await withApp { app in
-            try await app.testing().test(.POST, "add-comment?content=test", afterResponse: { res async in
+            try await app.testing().test(.POST, "api/add-comment?content=test", afterResponse: { res async in
 
                 #expect(res.status == .ok)
 
@@ -33,7 +33,7 @@ struct AppTests {
     func deleteComment() async throws {
         try await withApp { app in
             let comments = Comment.updateCommentGlobalStorage()
-            try await app.testing().test(.DELETE, "delete-comment?id=\(comments[0].id)", afterResponse: { res async in
+            try await app.testing().test(.DELETE, "api/delete-comment?id=\(comments[0].id)", afterResponse: { res async in
                 #expect(res.status == .ok)
             })
         }
