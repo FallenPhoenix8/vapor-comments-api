@@ -1,3 +1,4 @@
+[![Local](https://github.com/FallenPhoenix8/vapor-comments/actions/workflows/swift.yml/badge.svg)](https://github.com/FallenPhoenix8/vapor-comments/actions/workflows/swift.yml)
 ## Running dev scripts
 
 In order to run the dev scripts, you need to have `watchexec` installed on your system.
