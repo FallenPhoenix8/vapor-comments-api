@@ -15,5 +15,11 @@ public func configure(_ app: Application) async throws {
     // cors middleware should come before default error middleware using `at: .beginning`
     app.middleware.use(cors, at: .beginning)
 
+    if let port = Environment.get("PORT") {
+        app.http.server.configuration.port = Int(port) ?? 8080
+    } else {
+        app.http.server.configuration.port = 8080
+    }
+
     try routes(app)
 }
