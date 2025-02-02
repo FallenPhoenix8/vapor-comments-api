@@ -25,4 +25,4 @@ jobs:
     - name: Build
       run: sh build.sh
     - name: Run tests
-      run: swift test -v
+      run: swift test
