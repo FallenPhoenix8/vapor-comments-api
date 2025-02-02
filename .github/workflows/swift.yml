@@ -13,15 +13,17 @@ jobs:
     runs-on: macos-latest
 
     steps:
+    - uses: SwiftyLab/setup-swift@latest
+    - name: Get swift version
+      run: swift --version
+    - name: Get swift version in macOS
+      if: runner.os == 'macOS'
+      run: xcrun --toolchain ${{ env.TOOLCHAINS }} swift --version
     - uses: actions/checkout@v4
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '22'
-    - name: Set up Swift
-      uses: actions/setup-swift@v1
-      with:
-        swift-version: '6.0.3' # Specify the version you are using
     - name: Build
       run: sh build.sh
     - name: Run tests
