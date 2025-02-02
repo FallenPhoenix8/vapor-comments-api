@@ -20,8 +20,8 @@ jobs:
         node-version: '22'
     - name: Set up Swift
       run: |
-        brew install swift@6.0.0
-        echo 'export PATH="/usr/local/opt/swift@6.0.0/bin:$PATH"' >> $GITHUB_ENV
+        brew install swift@latest
+        echo 'export PATH="/usr/local/opt/swift@latest/bin:$PATH"' >> $GITHUB_ENV
     - name: Build
       run: sh build.sh
     - name: Run tests
