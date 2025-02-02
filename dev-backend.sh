@@ -1,3 +1,5 @@
+echo "This script will build the frontend, then run the backend in development mode. watchexec must be installed on your system."
+echo "Building frontend..."
 cd ./Frontend
 npm install
 npm run build
