@@ -1,12 +1,12 @@
 import Foundation
 import Vapor
 
-public struct Comment: Decodable, Encodable, Sendable {
+public struct Comment: Decodable, Encodable, Sendable, Identifiable {
     public nonisolated(unsafe) static var comments: [Comment] = []
     private static let queue = DispatchQueue(label: "comments")
 
-    let id: Double
-    let content: String
+    public let id: Double
+    public let content: String
 
     init(content: String) {
         id = Date().timeIntervalSince1970
