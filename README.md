@@ -8,7 +8,7 @@ If you are using brew package manager, it can be installed with following comman
 brew install watchexec
 ```
 
-It's not possible to run both backend and frontend as in a live development version. There are 2 dev scripts.
+It's not possible to run both backend and frontend in a live development version. There are 2 dev scripts.
 In order to run backend development script, execute the following script:
 
 ```zsh
