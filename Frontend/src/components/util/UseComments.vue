@@ -13,7 +13,7 @@ onMounted(async () => {
 
   emit("update:comments", comments.value)
 
-  const socket = new WebSocket(`${API_URL}/ws/comments`)
+  const socket = new WebSocket(`${API_URL || ""}/ws/comments`)
   socket.onmessage = async ({ data }) => {
     comments.value = JSON.parse(await data.text()) as Comment[]
 
