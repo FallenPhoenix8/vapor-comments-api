@@ -21,8 +21,8 @@ import Vapor
 public struct Comment: Decodable, Encodable, Sendable, Identifiable {
     /// The global storage of comments. This array is used to store and retrieve comments from storage.
     private nonisolated(unsafe) static var comments: [Comment] = []
-
     private static let queue = DispatchQueue(label: "comments")
+    private static let fileManager: FileManager = .init()
 
     public let id: Double
     public let content: String
