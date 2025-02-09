@@ -1,3 +1,5 @@
+import Fluent
+import FluentPostgresDriver
 import Vapor
 
 // configures your application
@@ -14,6 +16,23 @@ public func configure(_ app: Application) async throws {
     let cors = CORSMiddleware(configuration: corsConfiguration)
     // cors middleware should come before default error middleware using `at: .beginning`
     app.middleware.use(cors, at: .beginning)
+
+    app.databases.use(
+        .postgres(
+            configuration: .init(
+                hostname: Environment.get("DB_HOST") ?? "localhost",
+                username: Environment.get("DB_USERNAME") ?? "vapor",
+                password: Environment.get("DB_PASSWORD") ?? "vapor",
+                database: Environment.get("DB_NAME") ?? "vapor",
+                tls: .disable
+            )
+        ),
+        as: .psql
+    )
+
+    app.migrations.add(CreateComment())
+    app.migrations.add(CreatePost())
+    app.migrations.add(CreateUser())
 
     if let port = Environment.get("PORT") {
         app.http.server.configuration.port = Int(port) ?? 8080
