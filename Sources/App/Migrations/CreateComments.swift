@@ -1,12 +1,12 @@
 import Fluent
 
-public struct CreateComment: AsyncMigration {
+public struct CreateComments: AsyncMigration {
     public func prepare(on database: Database) async throws {
         try await database.schema("comments")
             .id()
             .field("content", .string, .required)
-            .field("postId", .int, .required)
-            .field("userId", .int, .required)
+            .field("discussionId", .uuid, .required, .references("discussions", "id"))
+            .field("userId", .uuid, .required, .references("users", "id"))
             .create()
     }
 

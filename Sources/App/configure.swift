@@ -30,9 +30,9 @@ public func configure(_ app: Application) async throws {
         as: .psql
     )
 
-    app.migrations.add(CreateComment())
-    app.migrations.add(CreatePost())
-    app.migrations.add(CreateUser())
+    app.migrations.add(CreateDiscussion(), to: .psql)
+    app.migrations.add(CreateUser(), to: .psql)
+    app.migrations.add(CreateComments(), to: .psql)
 
     if let port = Environment.get("PORT") {
         app.http.server.configuration.port = Int(port) ?? 8080
