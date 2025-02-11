@@ -111,3 +111,9 @@ extension User {
         }
     }
 }
+
+extension Request {
+    func user() async throws -> User {
+        return try await User(request: self)
+    }
+}

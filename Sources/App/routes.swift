@@ -116,7 +116,7 @@ func routes(_ app: Application) throws {
     }
 
     auth.get("me") { req async throws -> String in
-        let user = try await User(request: req)
+        let user = try await req.user()
 
         return "Hello, \(user.username)"
     }
