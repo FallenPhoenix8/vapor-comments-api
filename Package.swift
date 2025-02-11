@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "vapor-comments",
+    name: "vapor-comments-api",
     platforms: [
         .macOS(.v13),
     ],

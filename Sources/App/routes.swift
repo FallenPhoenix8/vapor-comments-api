@@ -4,14 +4,6 @@ let fileManager: FileManager = .init()
 let wsManagerComments: WebSocketManager = .init(threadLabel: "wsManagerComments")
 
 func routes(_ app: Application) throws {
-    app.get { req -> Response in
-        req.fileio.streamFile(at: "Public/index.html")
-    }
-
-    app.get("**") { req -> Response in
-        req.fileio.streamFile(at: "Public/index.html")
-    }
-
     app.get("api", "comments") { req throws -> Response in
         if !fileManager.fileExists(atPath: "Sources/comments.json") {
             _ = fileManager.createFile(atPath: "Sources/comments.json", contents: "[]".data(using: String.Encoding.utf8))
