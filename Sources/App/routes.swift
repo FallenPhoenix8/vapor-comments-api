@@ -5,8 +5,35 @@ import Vapor
 let fileManager: FileManager = .init()
 let wsManagerComments: WebSocketManager = .init(threadLabel: "wsManagerComments")
 
+func frontendProxy(_ req: Request) async throws -> Response {
+    guard let frontendURLString = Environment.get("FRONTEND_URL") else {
+        throw Abort(.internalServerError, reason: "FRONTEND_URL is not set")
+    }
+
+    let frontendURI = URI(string: frontendURLString + req.url.path)
+
+    // Get the response from the frontendURI
+    let clientResponse = try await req.client.get(frontendURI, headers: req.headers)
+
+    let response: Response = .init(status: clientResponse.status, headers: clientResponse.headers)
+    // Set the body of the Response
+    if let body = clientResponse.body {
+        response.body = .init(data: body.getData(at: 0, length: body.readableBytes) ?? Data())
+    }
+
+    return response
+}
+
 func routes(_ app: Application) throws {
     let auth = app.grouped(AuthMiddleware())
+
+    app.get { req async throws -> Response in
+        return try await frontendProxy(req)
+    }
+
+    app.get("**") { req async throws -> Response in
+        return try await frontendProxy(req)
+    }
 
     app.get("api", "comments") { req throws -> Response in
         if !fileManager.fileExists(atPath: "Sources/comments.json") {
