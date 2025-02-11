@@ -18,6 +18,14 @@ public func configure(_ app: Application) async throws {
     // cors middleware should come before default error middleware using `at: .beginning`
     app.middleware.use(cors, at: .beginning)
 
+    app.sessions.configuration.cookieName = "vapor-comments"
+
+    app.sessions.configuration.cookieFactory = { sessionId in
+        .init(string: sessionId.string, isSecure: true)
+    }
+
+    app.middleware.use(app.sessions.middleware)
+
     app.databases.use(
         .postgres(
             configuration: .init(

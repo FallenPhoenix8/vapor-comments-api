@@ -81,12 +81,17 @@ func routes(_ app: Application) throws {
         )
         let token = try await req.jwt.sign(payload)
 
+        req.session.data["token"] = token
+
         return ["token": token]
     }
 
-    app.get("auth", "me") { req async throws -> HTTPStatus in
-        let payload = try await req.jwt.verify(as: User.Payload.self)
-        print(payload)
-        return .ok
+    app.get("auth", "me") { req async throws -> Response in
+        guard let token = req.session.data["token"] else {
+            throw Abort(.unauthorized, reason: "No token found in session")
+        }
+
+        _ = try await req.jwt.verify(token, as: User.Payload.self)
+        return Response(status: .ok)
     }
 }
