@@ -11,3 +11,4 @@ db.sqlite
 ! .env.example
 .vscode
 Sources/comments.json
+Public/dev
