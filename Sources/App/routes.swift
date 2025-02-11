@@ -6,6 +6,8 @@ let fileManager: FileManager = .init()
 let wsManagerComments: WebSocketManager = .init(threadLabel: "wsManagerComments")
 
 func routes(_ app: Application) throws {
+    let auth = app.grouped(AuthMiddleware())
+
     app.get("api", "comments") { req throws -> Response in
         if !fileManager.fileExists(atPath: "Sources/comments.json") {
             _ = fileManager.createFile(atPath: "Sources/comments.json", contents: "[]".data(using: String.Encoding.utf8))
@@ -86,12 +88,9 @@ func routes(_ app: Application) throws {
         return ["token": token]
     }
 
-    app.get("auth", "me") { req async throws -> Response in
-        guard let token = req.session.data["token"] else {
-            throw Abort(.unauthorized, reason: "No token found in session")
-        }
+    auth.get("me") { req async throws -> String in
+        let user = try await User(request: req)
 
-        _ = try await req.jwt.verify(token, as: User.Payload.self)
-        return Response(status: .ok)
+        return "Hello, \(user.username)"
     }
 }

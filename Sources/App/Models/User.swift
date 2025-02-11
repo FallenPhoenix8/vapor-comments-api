@@ -21,6 +21,21 @@ final class User: Model, Content, @unchecked Sendable {
         self.username = username
         self.passwordHash = passwordHash
     }
+
+    init(request: Request) async throws {
+        guard let token = request.session.data["token"] else {
+            throw Abort(.unauthorized, reason: "No token found in session")
+        }
+
+        let payload = try await request.jwt.verify(token, as: User.Payload.self)
+        id = UUID(uuidString: payload.subject.value)
+        guard let user = try await User.query(on: request.db).filter(\.$id == id!).first() else {
+            throw Abort(.internalServerError, reason: "User not found")
+        }
+
+        username = user.username
+        passwordHash = user.passwordHash
+    }
 }
 
 extension User {
