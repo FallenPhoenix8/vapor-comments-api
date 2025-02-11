@@ -1,3 +1,5 @@
+import Fluent
+import JWT
 import Vapor
 
 let fileManager: FileManager = .init()
@@ -45,5 +47,46 @@ func routes(_ app: Application) throws {
 
     app.webSocket("ws", "comments") { _, ws in
         wsManagerComments.addConnection(ws)
+    }
+
+    app.post("auth", "register") { req async throws -> User in
+        try User.Create.validate(content: req)
+        let create = try req.content.decode(User.Create.self)
+
+        guard create.password == create.confirmPassword else {
+            throw Abort(.badRequest, reason: "Passwords do not match")
+        }
+
+        let user = try User(username: create.username, passwordHash: Bcrypt.hash(create.password))
+        try await user.save(on: req.db)
+
+        return user
+    }
+
+    app.post("auth", "login") { req async throws -> [String: String] in
+        let loginData = try req.content.decode(User.Login.self)
+        let expiration = Date().addingTimeInterval(60 * 60 * 24 * 7 /* 7 days */ )
+
+        guard let user = try await User.query(on: req.db).filter(\.$username == loginData.username).first() else {
+            throw Abort(.unauthorized, reason: "User not found")
+        }
+
+        guard try user.verify(password: loginData.password) else {
+            throw Abort(.unauthorized, reason: "Incorrect password")
+        }
+
+        let payload = User.Payload(
+            subject: SubjectClaim(value: user.id!.uuidString),
+            expiration: .init(value: expiration)
+        )
+        let token = try await req.jwt.sign(payload)
+
+        return ["token": token]
+    }
+
+    app.get("auth", "me") { req async throws -> HTTPStatus in
+        let payload = try await req.jwt.verify(as: User.Payload.self)
+        print(payload)
+        return .ok
     }
 }

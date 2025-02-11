@@ -1,5 +1,6 @@
 import Fluent
 import FluentPostgresDriver
+import JWT
 import Vapor
 
 // configures your application
@@ -31,8 +32,10 @@ public func configure(_ app: Application) async throws {
     )
 
     app.migrations.add(CreateDiscussion(), to: .psql)
-    app.migrations.add(CreateUser(), to: .psql)
+    app.migrations.add(User.Migration(), to: .psql)
     app.migrations.add(CreateComments(), to: .psql)
+
+    await app.jwt.keys.add(hmac: HMACKey(stringLiteral: Environment.get("JWT_SECRET") ?? "secret"), digestAlgorithm: .sha256)
 
     if let port = Environment.get("PORT") {
         app.http.server.configuration.port = Int(port) ?? 8080

@@ -1,3 +1,4 @@
+import Fluent
 import Foundation
 import Vapor
 
@@ -136,5 +137,38 @@ public struct Comment: Decodable, Encodable, Sendable, Identifiable {
         _ = type(of: self).writeComments(comments: comments)
         _ = Comment.updateCommentGlobalStorage()
         return comments
+    }
+}
+
+final class CommentClass: Model, @unchecked Sendable {
+    static let schema = "comments"
+
+    @ID(key: .id)
+    var id: UUID?
+
+    @Field(key: "content")
+    var content: String
+
+    @Timestamp(key: "createdAt", on: .create)
+    var createdAt: Date?
+
+    @Timestamp(key: "updatedAt", on: .update)
+    var updatedAt: Date?
+
+    @Field(key: "discussionId")
+    var discussionId: UUID?
+
+    @Field(key: "userId")
+    var userId: UUID?
+
+    init() {}
+
+    init(id: UUID? = nil, content: String, createdAt: Date? = nil, updatedAt: Date? = nil, discussionId: UUID? = nil, userId: UUID? = nil) {
+        self.id = id
+        self.content = content
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.discussionId = discussionId
+        self.userId = userId
     }
 }
