@@ -155,20 +155,27 @@ final class CommentClass: Model, @unchecked Sendable {
     @Timestamp(key: "updatedAt", on: .update)
     var updatedAt: Date?
 
-    @Field(key: "discussionId")
-    var discussionId: UUID?
+    @Parent(key: "discussionId")
+    var discussion: Discussion
 
-    @Field(key: "userId")
-    var userId: UUID?
+    @Parent(key: "userId")
+    var user: User
 
     init() {}
 
-    init(id: UUID? = nil, content: String, createdAt: Date? = nil, updatedAt: Date? = nil, discussionId: UUID? = nil, userId: UUID? = nil) {
+    init(
+        id: UUID? = nil,
+        content: String,
+        createdAt: Date? = nil,
+        updatedAt: Date? = nil,
+        discussionId: Discussion.IDValue,
+        userId: User.IDValue
+    ) {
         self.id = id
         self.content = content
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        self.discussionId = discussionId
-        self.userId = userId
+        $discussion.id = discussionId
+        $user.id = userId
     }
 }
