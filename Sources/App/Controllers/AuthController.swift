@@ -79,10 +79,13 @@ final class AuthController: RouteCollection, Sendable {
     }
 
     @Sendable
-    func getMe(req: Request) async throws -> String {
+    func getMe(req: Request) async throws -> [String: String] {
         let user = try await req.user()
 
-        return user.$username.value!
+        return [
+            "id": user.$id.value!.uuidString,
+            "username": user.$username.value!,
+        ]
     }
 
     @Sendable func logout(req: Request) async throws -> Response {

@@ -5,6 +5,10 @@ public struct CreateDiscussion: AsyncMigration {
         try await database.schema("discussions")
             .id()
             .field("title", .string, .required)
+            .field("createdAt", .datetime, .required)
+            .field("updatedAt", .datetime, .required)
+            .field("userId", .uuid, .required, .references("users", "id"))
+            .unique(on: "title")
             .create()
     }
 

@@ -27,7 +27,11 @@ func frontendProxy(_ req: Request) async throws -> Response {
 func routes(_ app: Application) throws {
     // let protected = app.grouped(AuthMiddleware())
     let authController = AuthController()
+    let discussionController = DiscussionController()
+    let commentController = CommentController()
     try app.register(collection: authController)
+    try app.register(collection: discussionController)
+    try app.register(collection: commentController)
 
     app.get { req async throws -> Response in
         return try await frontendProxy(req)
@@ -35,45 +39,6 @@ func routes(_ app: Application) throws {
 
     app.get("**") { req async throws -> Response in
         return try await frontendProxy(req)
-    }
-
-    app.get("api", "comments") { req throws -> Response in
-        if !fileManager.fileExists(atPath: "Sources/comments.json") {
-            _ = fileManager.createFile(atPath: "Sources/comments.json", contents: "[]".data(using: String.Encoding.utf8))
-        }
-
-        let res = req.fileio.streamFile(at: "Sources/comments.json")
-        return res
-    }
-
-    app.delete("api", "delete-comment") { req async throws -> Response in
-        var comments: [Comment] = []
-        do {
-            let id = try req.query.get(Double.self, at: "id")
-            let comment = try Comment(id: id)
-            comments = try await comment.delete()
-        } catch let err {
-            _ = Abort(.internalServerError, reason: "Error deleting comment: \(err)")
-        }
-
-        do {
-            try wsManagerComments.broadcast(JSONEncoder().encode(comments))
-        } catch {
-            _ = Abort(.badRequest, reason: "Invalid JSON data")
-        }
-
-        return req.fileio.streamFile(at: "Sources/comments.json")
-    }
-
-    app.post("api", "add-comment") { req async throws -> Response in
-        let content = try req.query.get(String.self, at: "content")
-
-        let comment = Comment(content: content)
-        let comments = try await comment.add()
-
-        try wsManagerComments.broadcast(JSONEncoder().encode(comments))
-
-        return req.fileio.streamFile(at: "Sources/comments.json")
     }
 
     app.webSocket("ws", "comments") { _, ws in

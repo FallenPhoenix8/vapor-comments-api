@@ -39,8 +39,8 @@ public func configure(_ app: Application) async throws {
         as: .psql
     )
 
-    app.migrations.add(CreateDiscussion(), to: .psql)
     app.migrations.add(User.Migration(), to: .psql)
+    app.migrations.add(CreateDiscussion(), to: .psql)
     app.migrations.add(CreateComments(), to: .psql)
 
     await app.jwt.keys.add(hmac: HMACKey(stringLiteral: Environment.get("JWT_SECRET") ?? "secret"), digestAlgorithm: .sha256)

@@ -14,6 +14,9 @@ final class User: Model, Content, @unchecked Sendable {
     @Field(key: "passwordHash")
     var passwordHash: String
 
+    @Children(for: \.$user)
+    var comments: [Comment]
+
     init() {}
 
     init(id: UUID? = nil, username: String, passwordHash: String) {
@@ -76,7 +79,7 @@ extension User.Create: Validatable {
     }
 }
 
-extension User: ModelAuthenticatable {
+extension User: ModelAuthenticatable, Authenticatable {
     static let usernameKey = \User.$username
     static let passwordHashKey = \User.$passwordHash
 
