@@ -14,7 +14,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:latest
+        image: postgres:14
         env:
           POSTGRES_USER: vapor
           POSTGRES_PASSWORD: vapor
