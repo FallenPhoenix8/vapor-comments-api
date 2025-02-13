@@ -12,13 +12,22 @@ jobs:
   build:
     runs-on: macos-latest
 
-    
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: vapor
+          POSTGRES_PASSWORD: vapor
+          POSTGRES_DB: vapor-comments
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready -U vapor
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-    - name: Setup docker
-      run: |
-        brew install docker
-        brew services start docker
     - uses: SwiftyLab/setup-swift@latest
     - name: Get swift version
       run: swift --version
@@ -39,19 +48,9 @@ jobs:
     - name: Build
       run: sh build.sh
     - name: Run tests
+      env:
+        DB_HOST: localhost
+        DB_USERNAME: vapor
+        DB_PASSWORD: vapor
+        DB_NAME: vapor-comments
       run: swift test
-
-    services:
-      postgres:
-        image: postgres:latest
-        env:
-          POSTGRES_USER: vapor
-          POSTGRES_PASSWORD: vapor
-          POSTGRES_DB: vapor-comments
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready -U vapor
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
