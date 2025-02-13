@@ -8,11 +8,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
     - name: Debug Docker container creation
       run: |
+        brew install docker
+        brew service start docker
         docker create --name test_postgres -p 5433:5433 \
           -e POSTGRES_USER=vapor \
           -e POSTGRES_PASSWORD=vapor \
@@ -20,8 +22,6 @@ jobs:
           postgres:14
         docker start test_postgres
         docker logs test_postgres
-    - name: Check Docker permissions
-      run: docker ps
     - uses: SwiftyLab/setup-swift@latest
     - name: Get swift version
       run: swift --version
