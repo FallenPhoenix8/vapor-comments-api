@@ -26,6 +26,8 @@ jobs:
           --health-retries 3
 
     steps:
+    - name: Check Docker permissions
+      run: docker ps
     - uses: SwiftyLab/setup-swift@latest
     - name: Get swift version
       run: swift --version
