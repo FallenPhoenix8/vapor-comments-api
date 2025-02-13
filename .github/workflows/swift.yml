@@ -10,20 +10,6 @@ jobs:
   build:
     runs-on: macos-latest
 
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: vapor
-          POSTGRES_PASSWORD: vapor
-          POSTGRES_DB: vapor-comments
-        ports:
-          - 5432:5432 
-        options: >-
-          --health-cmd pg_isready -U vapor
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
     - uses: SwiftyLab/setup-swift@latest
@@ -33,12 +19,11 @@ jobs:
       if: runner.os == 'macOS'
       run: xcrun --toolchain ${{ env.TOOLCHAINS }} swift --version
     - uses: actions/checkout@v4
-    - name: Wait for PostgreSQL to be ready
+    - name: Install PostgreSQL
       run: |
-        until pg_isready -h localhost -p 5432 -U vapor; do
-          echo "Waiting for PostgreSQL to be ready..."
-          sleep 2
-        done
+        brew install postgresql@14
+        brew services start postgresql@14
+        createdb -U $(whoami) vapor-comments
     - name: Build
       run: sh build.sh
     - name: Run tests
