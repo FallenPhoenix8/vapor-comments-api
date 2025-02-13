@@ -4,6 +4,8 @@ import Testing
 import VaporTesting
 
 nonisolated(unsafe) var authToken: String?
+nonisolated(unsafe) var discussionId: String?
+nonisolated(unsafe) var commentId: String?
 
 @Suite("App Tests", .serialized)
 struct AppTests {
@@ -95,6 +97,84 @@ struct AppTests {
 
             }, afterResponse: { res in
                 #expect(res.status == .ok)
+            })
+        }
+    }
+
+    @Test("Test adding discussion")
+    func testAddDiscussion() async throws {
+        try await withApp { app in
+            try await app.testing().test(.POST, "/api/discussions/create/test", beforeRequest: { req in
+                print(authToken ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken!)
+            }, afterResponse: { res in
+                discussionId = try res.content.decode([String: String].self)["id"]
+                print("DiscussionId: \(discussionId ?? "NOT FOUND")")
+                #expect(res.status == .created)
+            })
+        }
+    }
+
+    @Test("Test getting all discussions")
+    func testGetDiscussions() async throws {
+        try await withApp { app in
+            try await app.testing().test(.GET, "/api/discussions", beforeRequest: { req in
+                print(authToken ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken!)
+            }, afterResponse: { res in
+                #expect(res.status == .ok)
+            })
+        }
+    }
+
+    @Test("Test adding comment")
+    func testAddComment() async throws {
+        try await withApp { app in
+            try await app.testing().test(.POST, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/comments/add?content=test", beforeRequest: { req in
+                print(authToken ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken!)
+            }, afterResponse: { res in
+                commentId = try res.content.decode([String: String].self)["id"]
+                print("CommentId: \(commentId ?? "NOT FOUND")")
+                #expect(res.status == .created)
+            })
+        }
+    }
+
+    @Test("Test getting all comments")
+    func testGetComments() async throws {
+        try await withApp { app in
+            try await app.testing().test(.GET, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/comments", beforeRequest: { req in
+                print(authToken ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken!)
+            }, afterResponse: { res in
+                #expect(res.status == .ok)
+            })
+        }
+    }
+
+    @Test("Test deleting comment")
+    func testDeleteComment() async throws {
+        try await withApp { app in
+            try await app.testing().test(.DELETE, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/comments/delete/\(commentId ?? "COMMENT ID NOT FOUND")", beforeRequest: { req in
+                print(authToken ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken!)
+            }, afterResponse: { res in
+                commentId = nil
+                #expect(res.status == .seeOther)
+            })
+        }
+    }
+
+    @Test("Test deleting discussion")
+    func testDeleteDiscussion() async throws {
+        try await withApp { app in
+            try await app.testing().test(.DELETE, "/api/discussions/delete/\(discussionId ?? "DISCUSSION ID NOT FOUND")", beforeRequest: { req in
+                print(authToken ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken!)
+            }, afterResponse: { res in
+                discussionId = nil
+                #expect(res.status == .seeOther)
             })
         }
     }

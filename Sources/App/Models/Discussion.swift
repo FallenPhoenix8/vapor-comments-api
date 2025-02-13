@@ -32,3 +32,18 @@ final class Discussion: Model, Content, @unchecked Sendable {
         $user.id = userId
     }
 }
+
+extension Discussion {
+    func toDictionary() -> [String: String] {
+        let dateFormatter = ISO8601DateFormatter()
+        let createdAtString = dateFormatter.string(from: createdAt ?? Date())
+        let updatedAtString = dateFormatter.string(from: updatedAt ?? Date())
+
+        return [
+            "id": id?.uuidString ?? "",
+            "title": title,
+            "createdAt": createdAtString,
+            "updatedAt": updatedAtString,
+        ]
+    }
+}

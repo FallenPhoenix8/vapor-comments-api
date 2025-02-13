@@ -32,7 +32,7 @@ struct CommentController: RouteCollection {
     }
 
     @Sendable
-    func addComment(_ req: Request) async throws -> Comment {
+    func addComment(_ req: Request) async throws -> Response {
         let discussionId = try req.parameters.require("discussionId")
         let content = try req.query.get(String.self, at: "content")
 
@@ -45,11 +45,16 @@ struct CommentController: RouteCollection {
         let comment = try Comment(content: content, discussionId: discussion.requireID(), userId: user.requireID())
         try await comment.save(on: req.db)
 
-        return comment
+        let commentDict = comment.toDictionary()
+        let json = try JSONEncoder().encode(commentDict)
+
+        let res = Response(status: .created, headers: ["Content-Type": "application/json"], body: .init(data: json))
+
+        return res
     }
 
     @Sendable
-    func deleteComment(_ req: Request) async throws -> Comment {
+    func deleteComment(_ req: Request) async throws -> Response {
         let discussionId = try req.parameters.require("discussionId")
         let commentId = try req.parameters.require("commentId")
 
@@ -65,6 +70,6 @@ struct CommentController: RouteCollection {
 
         try await comment.delete(on: req.db)
 
-        return comment
+        return req.redirect(to: "/api/discussions/\(discussionId)/comments")
     }
 }

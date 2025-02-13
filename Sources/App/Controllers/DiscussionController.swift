@@ -15,7 +15,7 @@ struct DiscussionController: RouteCollection {
     }
 
     @Sendable
-    func create(_ req: Request) async throws -> Discussion {
+    func create(_ req: Request) async throws -> Response {
         guard let title = req.parameters.get("title") else {
             throw Abort(.badRequest, reason: "Missing title")
         }
@@ -23,7 +23,12 @@ struct DiscussionController: RouteCollection {
         let discussion = try Discussion(title: title, userId: await req.user().$id.value!)
 
         try await discussion.save(on: req.db)
-        return discussion
+
+        let discussionDict = discussion.toDictionary()
+        let json = try JSONEncoder().encode(discussionDict)
+
+        let res = Response(status: .created, headers: ["Content-Type": "application/json"], body: .init(data: json))
+        return res
     }
 
     @Sendable
@@ -36,6 +41,12 @@ struct DiscussionController: RouteCollection {
         }
 
         try await discussion.delete(on: req.db)
+        // let discussions = try await Discussion.query(on: req.db).all()
+        // let discussionsJSON: [[String: String]] = discussions.map { discussion in
+        //     discussion.toDictionary()
+        // }
+        // let jsonData = try JSONEncoder().encode(discussionsJSON)
+        // let res = Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
 
         return req.redirect(to: "/api/discussions")
     }

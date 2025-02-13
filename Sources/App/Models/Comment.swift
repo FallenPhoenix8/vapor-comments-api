@@ -179,3 +179,20 @@ final class Comment: Model, @unchecked Sendable, Content {
         $user.id = userId
     }
 }
+
+extension Comment {
+    func toDictionary() -> [String: String] {
+        let dateFormatter = ISO8601DateFormatter()
+        let createdAtString = dateFormatter.string(from: createdAt!)
+        let updatedAtString = dateFormatter.string(from: updatedAt!)
+        return [
+            "id": id?.uuidString ?? "",
+            "content": content,
+            "createdAt": createdAtString,
+            "updatedAt": updatedAtString,
+            "authorUsername": $user.value?.username ?? "",
+            "discussionId": $discussion.value?.id?.uuidString ?? "",
+            "discussionTitle": $discussion.value?.title ?? "",
+        ]
+    }
+}
