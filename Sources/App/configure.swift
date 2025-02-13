@@ -32,7 +32,7 @@ public func configure(_ app: Application) async throws {
                 hostname: Environment.get("DB_HOST") ?? "localhost",
                 username: Environment.get("DB_USERNAME") ?? "vapor",
                 password: Environment.get("DB_PASSWORD") ?? "vapor",
-                database: Environment.get("DB_NAME") ?? "vapor",
+                database: Environment.get("DB_NAME") ?? "vapor-comments",
                 tls: .disable
             )
         ),

@@ -24,7 +24,7 @@ final class AuthController: RouteCollection, Sendable {
         protected.get("me", use: getMe)
     }
 
-    func setSessionToken(request: Request, userUuid: UUID) async throws -> [String: String] {
+    func setSessionToken(request: Request, userUuid: UUID, isRegister: Bool = false) async throws -> Response {
         let expiration = Date().addingTimeInterval(60 * 60 * 24 * 7 /* 7 days */ )
         let payload = User.Payload(
             subject: SubjectClaim(value: userUuid.uuidString),
@@ -32,14 +32,22 @@ final class AuthController: RouteCollection, Sendable {
         )
         let token = try await request.jwt.sign(payload)
 
-        request.headers.add(name: "Authorization", value: "Bearer \(token)")
+        request.headers.bearerAuthorization = .init(token: token)
         request.session.data["token"] = token
 
-        return ["token": token]
+        let json: [String: Any] = [
+            "token": token,
+        ]
+        let jsonData = try JSONSerialization.data(withJSONObject: json)
+        let resStatus: HTTPStatus = isRegister ? .created : .ok
+        let resHeaders: HTTPHeaders = ["Content-Type": "application/json"]
+        let res: Response = .init(status: resStatus, headers: resHeaders, body: .init(data: jsonData))
+
+        return res
     }
 
     @Sendable
-    func register(req: Request) async throws -> [String: String] {
+    func register(req: Request) async throws -> Response {
         try User.Create.validate(content: req)
         let create = try req.content.decode(User.Create.self)
 
@@ -54,11 +62,11 @@ final class AuthController: RouteCollection, Sendable {
             throw Abort(.internalServerError, reason: "Creating user failed")
         }
 
-        return try await setSessionToken(request: req, userUuid: userUuid)
+        return try await setSessionToken(request: req, userUuid: userUuid, isRegister: true)
     }
 
     @Sendable
-    func login(req: Request) async throws -> [String: String] {
+    func login(req: Request) async throws -> Response {
         let loginData = try req.content.decode(User.Login.self)
 
         guard let user = try await User.query(on: req.db)

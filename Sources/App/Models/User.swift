@@ -26,9 +26,7 @@ final class User: Model, Content, @unchecked Sendable {
     }
 
     init(request: Request) async throws {
-        guard let token = request.session.data["token"] else {
-            throw Abort(.unauthorized, reason: "No token found in session")
-        }
+        let token = request.session.data["token"] ?? request.headers.bearerAuthorization!.token
 
         let payload = try await request.jwt.verify(token, as: User.Payload.self)
         id = UUID(uuidString: payload.subject.value)

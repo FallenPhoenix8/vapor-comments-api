@@ -12,6 +12,21 @@ jobs:
   build:
     runs-on: macos-latest
 
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: vapor
+          POSTGRES_PASSWORD: vapor
+          POSTGRES_DB: vapor-comments
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready -U vapor
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: SwiftyLab/setup-swift@latest
     - name: Get swift version
@@ -24,6 +39,12 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '22'
+    - name: Wait for PostgreSQL to be ready
+      run: |
+        until pg_isready -h localhost -U vapor; do
+          echo "Waiting for PostgreSQL to be ready..."
+          sleep 2
+        done
     - name: Build
       run: sh build.sh
     - name: Run tests
