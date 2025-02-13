@@ -10,18 +10,22 @@ jobs:
   build:
     runs-on: macos-latest
 
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: vapor
+          POSTGRES_PASSWORD: vapor
+          POSTGRES_DB: vapor-comments
+        ports:
+          - 5432:5432 
+        options: >-
+          --health-cmd pg_isready -U vapor
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
-    - name: Debug Docker container creation
-      run: |
-        brew install --cask docker
-        brew services start docker
-        docker create --name test_postgres -p 5433:5433 \
-          -e POSTGRES_USER=vapor \
-          -e POSTGRES_PASSWORD=vapor \
-          -e POSTGRES_DB=vapor-comments \
-          postgres:14
-        docker start test_postgres
-        docker logs test_postgres
     - uses: SwiftyLab/setup-swift@latest
     - name: Get swift version
       run: swift --version
@@ -29,6 +33,12 @@ jobs:
       if: runner.os == 'macOS'
       run: xcrun --toolchain ${{ env.TOOLCHAINS }} swift --version
     - uses: actions/checkout@v4
+    - name: Wait for PostgreSQL to be ready
+      run: |
+        until pg_isready -h localhost -p 5432 -U vapor; do
+          echo "Waiting for PostgreSQL to be ready..."
+          sleep 2
+        done
     - name: Build
       run: sh build.sh
     - name: Run tests
