@@ -14,7 +14,6 @@ jobs:
     - name: Debug Docker container creation
       run: |
         brew install docker
-        brew service start docker
         docker create --name test_postgres -p 5433:5433 \
           -e POSTGRES_USER=vapor \
           -e POSTGRES_PASSWORD=vapor \
