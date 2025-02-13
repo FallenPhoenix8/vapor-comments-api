@@ -2,7 +2,6 @@ import Fluent
 import JWT
 import Vapor
 
-let fileManager: FileManager = .init()
 let wsManagerComments: WebSocketManager = .init(threadLabel: "wsManagerComments")
 
 func frontendProxy(_ req: Request) async throws -> Response {

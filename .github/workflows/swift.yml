@@ -23,7 +23,10 @@ jobs:
       run: |
         brew install postgresql@14
         brew services start postgresql@14
-        createdb -U $(whoami) vapor-comments
+    - name: Create PostgreSQL user and database
+      run: |
+        psql -U $(whoami) postgres -c "CREATE USER vapor WITH PASSWORD 'vapor';"
+        psql -U $(whoami) postgres -c "CREATE DATABASE \"vapor-comments\" OWNER vapor;"
     - name: Build
       run: sh build.sh
     - name: Run tests
