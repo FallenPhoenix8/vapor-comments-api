@@ -17,33 +17,40 @@ final class Discussion: Model, Content, @unchecked Sendable {
     var updatedAt: Date?
 
     @Parent(key: "userId")
-    var user: User
+    var author: User
 
     @Children(for: \.$discussion)
     var comments: [Comment]
 
+    @Children(for: \.$discussion)
+    var participants: [Participant]
+
     init() {}
 
-    init(id: UUID? = nil, title: String, createdAt: Date? = nil, updatedAt: Date? = nil, userId: User.IDValue) {
+    init(id: UUID? = nil, title: String, createdAt: Date? = nil, updatedAt: Date? = nil, authorId: User.IDValue) {
         self.id = id
         self.title = title
         self.createdAt = createdAt
         self.updatedAt = updatedAt
-        $user.id = userId
+        $author.id = authorId
     }
 }
 
 extension Discussion {
-    func toDictionary() -> [String: String] {
+    func toDictionary() throws -> [String: String] {
         let dateFormatter = ISO8601DateFormatter()
         let createdAtString = dateFormatter.string(from: createdAt ?? Date())
         let updatedAtString = dateFormatter.string(from: updatedAt ?? Date())
+
+        let participants = self.$participants.value?.toDictionary()
+        let participantsString = try JSONSerialization.data(withJSONObject: participants ?? []).base64EncodedString()
 
         return [
             "id": id?.uuidString ?? "",
             "title": title,
             "createdAt": createdAtString,
             "updatedAt": updatedAtString,
+            "participants": participantsString,
         ]
     }
 }

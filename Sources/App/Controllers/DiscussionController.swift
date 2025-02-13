@@ -20,11 +20,11 @@ struct DiscussionController: RouteCollection {
             throw Abort(.badRequest, reason: "Missing title")
         }
 
-        let discussion = try Discussion(title: title, userId: await req.user().$id.value!)
+        let discussion = try Discussion(title: title, authorId: await req.user().$id.value!)
 
         try await discussion.save(on: req.db)
 
-        let discussionDict = discussion.toDictionary()
+        let discussionDict = try discussion.toDictionary()
         let json = try JSONEncoder().encode(discussionDict)
 
         let res = Response(status: .created, headers: ["Content-Type": "application/json"], body: .init(data: json))
