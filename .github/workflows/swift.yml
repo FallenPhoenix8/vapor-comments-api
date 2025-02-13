@@ -29,12 +29,6 @@ jobs:
       if: runner.os == 'macOS'
       run: xcrun --toolchain ${{ env.TOOLCHAINS }} swift --version
     - uses: actions/checkout@v4
-    - name: Wait for PostgreSQL to be ready
-      run: |
-        until pg_isready -h localhost -p 5433 -U vapor; do
-          echo "Waiting for PostgreSQL to be ready..."
-          sleep 2
-        done
     - name: Build
       run: sh build.sh
     - name: Run tests
