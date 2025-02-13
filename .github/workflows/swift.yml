@@ -14,7 +14,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:13
+        image: postgres:latest
         env:
           POSTGRES_USER: vapor
           POSTGRES_PASSWORD: vapor
@@ -28,6 +28,12 @@ jobs:
           --health-retries 5
 
     steps:
+    - name: Setup docker
+      run: |
+        brew install docker
+        brew services start docker
+        which docker
+        docker --version
     - uses: SwiftyLab/setup-swift@latest
     - name: Get swift version
       run: swift --version
