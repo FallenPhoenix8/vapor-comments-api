@@ -10,22 +10,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_USER: vapor
-          POSTGRES_PASSWORD: vapor
-          POSTGRES_DB: vapor-comments
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd pg_isready -U vapor
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 3
-
     steps:
+    - name: Debug Docker container creation
+      run: |
+        docker create --name test_postgres -p 5434:5432 \
+          -e POSTGRES_USER=vapor \
+          -e POSTGRES_PASSWORD=vapor \
+          -e POSTGRES_DB=vapor-comments \
+          postgres:14
+        docker start test_postgres
+        docker logs test_postgres
     - name: Check Docker permissions
       run: docker ps
     - uses: SwiftyLab/setup-swift@latest
