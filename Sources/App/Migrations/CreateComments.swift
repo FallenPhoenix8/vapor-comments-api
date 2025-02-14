@@ -6,7 +6,7 @@ public struct CreateComments: AsyncMigration {
             .id()
             .field("content", .string, .required)
             .field("discussionId", .uuid, .required, .references("discussions", "id"))
-            .field("userId", .uuid, .required, .references("users", "id"))
+            .field("participantId", .uuid, .required, .references("participants", "id"))
             .field("createdAt", .datetime, .required)
             .field("updatedAt", .datetime, .required)
             .create()

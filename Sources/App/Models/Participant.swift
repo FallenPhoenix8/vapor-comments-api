@@ -26,15 +26,22 @@ final class Participant: Model, Content, @unchecked Sendable {
     @Timestamp(key: "lastActiveAt", on: .update)
     var lastActiveAt: Date?
 
+    @Children(for: \.$participant)
+    var comments: [Comment]
+
+    @Field(key: "isAuthor")
+    var isAuthor: Bool
+
     init() {}
 
-    init(id: UUID? = nil, discussionId: Discussion.IDValue, userId: User.IDValue, joinedAt: Date? = nil, status: Status = .inactive, lastActiveAt: Date? = nil) {
+    init(id: UUID? = nil, discussionId: Discussion.IDValue, userId: User.IDValue, joinedAt: Date? = nil, status: Status = .inactive, lastActiveAt: Date? = nil, isAuthor: Bool = false) {
         self.id = id
         $discussion.id = discussionId
         $user.id = userId
         self.joinedAt = joinedAt
         self.status = status
         self.lastActiveAt = lastActiveAt
+        self.isAuthor = isAuthor
     }
 }
 
@@ -49,34 +56,13 @@ extension Participant {
                 .field("joinedAt", .datetime, .required)
                 .field("status", .string, .required)
                 .field("lastActiveAt", .datetime)
+                .field("isAuthor", .bool, .required)
                 .unique(on: "discussionId", "userId")
                 .create()
         }
 
         public func revert(on database: Database) async throws {
             try await database.schema("participants").delete()
-        }
-    }
-}
-
-extension Participant {
-    func toDictionary() -> [String: String] {
-        let dateFormatter = ISO8601DateFormatter()
-        let joinedAtString = dateFormatter.string(from: joinedAt!)
-        let lastActiveAtString = dateFormatter.string(from: lastActiveAt!)
-        return [
-            "id": id?.uuidString ?? "",
-            "joinedAt": joinedAtString,
-            "status": status.rawValue,
-            "lastActiveAt": lastActiveAtString,
-        ]
-    }
-}
-
-extension [Participant] {
-    func toDictionary() -> [[String: String]] {
-        return self.map { participant in
-            participant.toDictionary()
         }
     }
 }

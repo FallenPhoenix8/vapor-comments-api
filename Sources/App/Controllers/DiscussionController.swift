@@ -3,15 +3,22 @@ import Vapor
 
 struct DiscussionController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
-        let protected = routes.grouped(AuthMiddleware())
-        routes.get("api", "discussions", use: index)
-        protected.post("api", "discussions", "create", ":title", use: create)
-        protected.delete("api", "discussions", "delete", ":discussionId", use: delete)
+        let api = routes.grouped("api")
+        let discussions = api.grouped("discussions")
+        let protected = discussions.grouped(AuthMiddleware())
+        discussions.get(use: index)
+        protected.post("create", ":title", use: create)
+        protected.delete(":discussionId", "delete", use: delete)
+        protected.delete(":discussionId", "leave", use: leave)
+        protected.post(":discussionId", "join", use: join)
+        protected.get(":discussionId", "details", use: getDetails)
     }
 
     @Sendable
     func index(_ req: Request) async throws -> [Discussion] {
-        return try await Discussion.query(on: req.db).all()
+        return try await Discussion.query(on: req.db)
+            .sort(\.$createdAt, .descending)
+            .all()
     }
 
     @Sendable
@@ -20,15 +27,16 @@ struct DiscussionController: RouteCollection {
             throw Abort(.badRequest, reason: "Missing title")
         }
 
-        let discussion = try Discussion(title: title, authorId: await req.user().$id.value!)
+        let user = try await req.user()
+
+        let discussion = Discussion(title: title, authorId: user.$id.value!)
 
         try await discussion.save(on: req.db)
 
-        let discussionDict = try discussion.toDictionary()
-        let json = try JSONEncoder().encode(discussionDict)
+        let participant = try Participant(discussionId: discussion.requireID(), userId: user.requireID(), isAuthor: true)
+        try await participant.save(on: req.db)
 
-        let res = Response(status: .created, headers: ["Content-Type": "application/json"], body: .init(data: json))
-        return res
+        return req.redirect(to: "/api/discussions")
     }
 
     @Sendable
@@ -49,5 +57,82 @@ struct DiscussionController: RouteCollection {
         // let res = Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
 
         return req.redirect(to: "/api/discussions")
+    }
+
+    @Sendable
+    func join(_ req: Request) async throws -> Response {
+        let discussionId = try req.parameters.require("discussionId")
+
+        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+        guard let discussion = discussion else {
+            throw Abort(.notFound, reason: "Discussion not found")
+        }
+
+        let user = try await req.user()
+        let testParticipant = try await Participant.query(on: req.db)
+            .filter(\.$discussion.$id == discussion.requireID())
+            .filter(\.$user.$id == user.requireID())
+            .first()
+
+        guard testParticipant == nil else {
+            throw Abort(.badRequest, reason: "User already joined discussion")
+        }
+
+        let participant = try Participant(discussionId: discussion.requireID(), userId: user.requireID(), isAuthor: false)
+
+        try await participant.save(on: req.db)
+
+        return Response(status: .ok, body: .init(string: "Successfully joined discussion"))
+    }
+
+    @Sendable
+    func getDetails(_ req: Request) async throws -> Discussion {
+        let discussionId = try req.parameters.require("discussionId")
+
+        let discussion = try await Discussion.query(on: req.db)
+            .filter(\.$id == UUID(uuidString: discussionId) ?? UUID())
+            .with(\.$author)
+            .with(\.$participants)
+            .with(\.$comments)
+            .first()
+
+        guard let discussion = discussion else {
+            throw Abort(.notFound, reason: "Discussion not found")
+        }
+
+        let isDiscussionIncludesUser = try await Participant.query(on: req.db)
+            .filter(\.$discussion.$id == discussion.requireID())
+            .filter(\.$user.$id == req.user().requireID())
+            .first() != nil
+
+        if !isDiscussionIncludesUser {
+            throw Abort(.unauthorized, reason: "User is not a participant of discussion")
+        }
+
+        return discussion
+    }
+
+    @Sendable
+    func leave(_ req: Request) async throws -> Response {
+        let discussionId = try req.parameters.require("discussionId")
+
+        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+        guard let discussion = discussion else {
+            throw Abort(.notFound, reason: "Discussion not found")
+        }
+
+        let user = try await req.user()
+        let participant = try await Participant.query(on: req.db)
+            .filter(\.$discussion.$id == discussion.requireID())
+            .filter(\.$user.$id == user.requireID())
+            .first()
+
+        guard let participant = participant else {
+            throw Abort(.notFound, reason: "Participant not found")
+        }
+
+        try await participant.delete(on: req.db)
+
+        return Response(status: .ok, body: .init(string: "Successfully left discussion"))
     }
 }

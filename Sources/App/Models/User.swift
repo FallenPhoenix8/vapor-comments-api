@@ -15,7 +15,7 @@ final class User: Model, Content, @unchecked Sendable {
     var passwordHash: String
 
     @Children(for: \.$user)
-    var comments: [Comment]
+    var participants: [Participant]
 
     init() {}
 

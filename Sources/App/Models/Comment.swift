@@ -158,8 +158,8 @@ final class Comment: Model, @unchecked Sendable, Content {
     @Parent(key: "discussionId") // This should match your database schema
     var discussion: Discussion
 
-    @Parent(key: "userId")
-    var user: User
+    @Parent(key: "participantId")
+    var participant: Participant
 
     init() {}
 
@@ -169,14 +169,14 @@ final class Comment: Model, @unchecked Sendable, Content {
         createdAt: Date? = nil,
         updatedAt: Date? = nil,
         discussionId: Discussion.IDValue,
-        userId: User.IDValue
+        participantId: Participant.IDValue
     ) {
         self.id = id
         self.content = content
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         $discussion.id = discussionId
-        $user.id = userId
+        $participant.id = participantId
     }
 }
 
@@ -190,7 +190,7 @@ extension Comment {
             "content": content,
             "createdAt": createdAtString,
             "updatedAt": updatedAtString,
-            "authorUsername": $user.value?.username ?? "",
+            "authorUsername": $participant.value?.$user.value?.username ?? "",
             "discussionId": $discussion.value?.id?.uuidString ?? "",
             "discussionTitle": $discussion.value?.title ?? "",
         ]

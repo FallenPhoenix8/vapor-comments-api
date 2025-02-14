@@ -36,21 +36,24 @@ final class Discussion: Model, Content, @unchecked Sendable {
     }
 }
 
-extension Discussion {
-    func toDictionary() throws -> [String: String] {
-        let dateFormatter = ISO8601DateFormatter()
-        let createdAtString = dateFormatter.string(from: createdAt ?? Date())
-        let updatedAtString = dateFormatter.string(from: updatedAt ?? Date())
+// extension Discussion {
+//     func toDictionary(request: Request) async throws -> [String: String] {
+//         let dateFormatter = ISO8601DateFormatter()
+//         let createdAtString = dateFormatter.string(from: createdAt ?? Date())
+//         let updatedAtString = dateFormatter.string(from: updatedAt ?? Date())
 
-        let participants = self.$participants.value?.toDictionary()
-        let participantsString = try JSONSerialization.data(withJSONObject: participants ?? []).base64EncodedString()
+//         let participants = try await Participant.query(on: request.db)
+//             .filter(\.$discussion.$id == $id.value!)
+//             .all()
 
-        return [
-            "id": id?.uuidString ?? "",
-            "title": title,
-            "createdAt": createdAtString,
-            "updatedAt": updatedAtString,
-            "participants": participantsString,
-        ]
-    }
-}
+//         let participantsString = try JSONSerialization.data(withJSONObject: participants).base64EncodedString()
+
+//         return [
+//             "id": id?.uuidString ?? "",
+//             "title": title,
+//             "createdAt": createdAtString,
+//             "updatedAt": updatedAtString,
+//             "participants": participantsString,
+//         ]
+//     }
+// }

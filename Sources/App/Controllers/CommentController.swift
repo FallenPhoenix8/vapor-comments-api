@@ -1,3 +1,4 @@
+import Fluent
 import Vapor
 
 struct CommentController: RouteCollection {
@@ -12,27 +13,12 @@ struct CommentController: RouteCollection {
         //     comment.post(use: addComment)
         //     comment.delete(use: deleteComment)
         // }
-        comments.get(use: getComments)
         protected.post("add", use: addComment)
         protected.delete("delete", ":commentId", use: deleteComment)
     }
 
     @Sendable
-    func getComments(_ req: Request) async throws -> [Comment] {
-        let discussionId = try req.parameters.require("discussionId")
-
-        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
-
-        let comments = discussion.$comments.value ?? []
-
-        return comments
-    }
-
-    @Sendable
-    func addComment(_ req: Request) async throws -> Response {
+    func addComment(_ req: Request) async throws -> Comment {
         let discussionId = try req.parameters.require("discussionId")
         let content = try req.query.get(String.self, at: "content")
 
@@ -42,15 +28,22 @@ struct CommentController: RouteCollection {
         }
 
         let user = try await req.user()
-        let comment = try Comment(content: content, discussionId: discussion.requireID(), userId: user.requireID())
+        let userId = try user.requireID()
+
+        let participant = try await Participant.query(on: req.db)
+            .filter(\.$discussion.$id == discussion.requireID())
+            .filter(\.$user.$id == userId)
+            .first()
+
+        guard let participant = participant else {
+            throw Abort(.notFound, reason: "Participant not found")
+        }
+
+        let comment = try Comment(content: content, discussionId: discussion.requireID(), participantId: participant.requireID())
+
         try await comment.save(on: req.db)
 
-        let commentDict = comment.toDictionary()
-        let json = try JSONEncoder().encode(commentDict)
-
-        let res = Response(status: .created, headers: ["Content-Type": "application/json"], body: .init(data: json))
-
-        return res
+        return comment
     }
 
     @Sendable
