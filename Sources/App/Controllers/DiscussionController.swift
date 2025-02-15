@@ -3,6 +3,16 @@ import Vapor
 
 let store = WebSocketManagerStore()
 
+func broadcastUpdate(_ req: Request, discussionId: UUID) async throws {
+    let discussionDetails = try await Discussion.getDetails(request: req, discussionId: discussionId)
+
+    let wsManager = await store.getWebSocket(for: discussionId)
+
+    if let wsManager = wsManager {
+        wsManager.broadcast(discussionDetails.getJSONData())
+    }
+}
+
 struct DiscussionController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let api = routes.grouped("api")
@@ -94,11 +104,7 @@ struct DiscussionController: RouteCollection {
 
         try await participant.save(on: req.db)
 
-        let wsManager = try await store.getWebSocket(for: discussion.requireID())
-
-        if let wsManager = wsManager {
-            wsManager.broadcast("participant-joined".data(using: .utf8)!)
-        }
+        try await broadcastUpdate(req, discussionId: discussion.requireID())
 
         return Response(status: .ok, body: .init(string: "Successfully joined discussion"))
     }
@@ -107,16 +113,7 @@ struct DiscussionController: RouteCollection {
     func getDetails(_ req: Request) async throws -> Discussion {
         let discussionId = try req.parameters.require("discussionId")
 
-        let discussion = try await Discussion.query(on: req.db)
-            .filter(\.$id == UUID(uuidString: discussionId) ?? UUID())
-            .with(\.$author)
-            .with(\.$participants)
-            .with(\.$comments)
-            .first()
-
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
+        let discussion = try await Discussion.getDetails(request: req, discussionId: UUID(uuidString: discussionId) ?? UUID())
 
         let isDiscussionIncludesUser = try await Participant.query(on: req.db)
             .filter(\.$discussion.$id == discussion.requireID())
@@ -151,11 +148,7 @@ struct DiscussionController: RouteCollection {
 
         try await participant.delete(on: req.db)
 
-        let wsManager = try await store.getWebSocket(for: discussion.requireID())
-
-        if let wsManager = wsManager {
-            wsManager.broadcast("participant-left".data(using: .utf8)!)
-        }
+        try await broadcastUpdate(req, discussionId: discussion.requireID())
 
         return Response(status: .ok, body: .init(string: "Successfully left discussion"))
     }
@@ -203,11 +196,7 @@ struct DiscussionController: RouteCollection {
 
         try await comment.save(on: req.db)
 
-        let wsManager = try await store.getWebSocket(for: discussion.requireID())
-
-        if let wsManager = wsManager {
-            wsManager.broadcast("comment-added".data(using: .utf8)!)
-        }
+        try await broadcastUpdate(req, discussionId: discussion.requireID())
 
         return comment
     }
@@ -229,11 +218,7 @@ struct DiscussionController: RouteCollection {
 
         try await comment.delete(on: req.db)
 
-        let wsManager = try await store.getWebSocket(for: discussion.requireID())
-
-        if let wsManager = wsManager {
-            wsManager.broadcast("comment-deleted".data(using: .utf8)!)
-        }
+        try await broadcastUpdate(req, discussionId: discussion.requireID())
 
         return req.redirect(to: "/api/discussions/\(discussionId)/comments")
     }

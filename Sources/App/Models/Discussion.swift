@@ -1,7 +1,7 @@
 import Fluent
 import Vapor
 
-final class Discussion: Model, Content, @unchecked Sendable {
+final class Discussion: Model, Content, @unchecked Sendable, Codable {
     static let schema = "discussions"
 
     @ID(key: .id)
@@ -36,24 +36,24 @@ final class Discussion: Model, Content, @unchecked Sendable {
     }
 }
 
-// extension Discussion {
-//     func toDictionary(request: Request) async throws -> [String: String] {
-//         let dateFormatter = ISO8601DateFormatter()
-//         let createdAtString = dateFormatter.string(from: createdAt ?? Date())
-//         let updatedAtString = dateFormatter.string(from: updatedAt ?? Date())
+extension Discussion {
+    func getJSONData() -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return try! encoder.encode(self)
+    }
 
-//         let participants = try await Participant.query(on: request.db)
-//             .filter(\.$discussion.$id == $id.value!)
-//             .all()
+    static func getDetails(request: Request, discussionId: UUID) async throws -> Discussion {
+        let discussion = try await Discussion.query(on: request.db)
+            .filter(\.$id == discussionId)
+            .with(\.$author)
+            .with(\.$participants)
+            .with(\.$comments)
+            .first()
 
-//         let participantsString = try JSONSerialization.data(withJSONObject: participants).base64EncodedString()
-
-//         return [
-//             "id": id?.uuidString ?? "",
-//             "title": title,
-//             "createdAt": createdAtString,
-//             "updatedAt": updatedAtString,
-//             "participants": participantsString,
-//         ]
-//     }
-// }
+        guard let discussion = discussion else {
+            throw Abort(.notFound, reason: "Discussion not found")
+        }
+        return discussion
+    }
+}
