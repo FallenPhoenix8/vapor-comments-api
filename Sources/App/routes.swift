@@ -27,10 +27,10 @@ func routes(_ app: Application) throws {
     // let protected = app.grouped(AuthMiddleware())
     let authController = AuthController()
     let discussionController = DiscussionController()
-    let commentController = CommentController()
+    // let commentController = CommentController()
     try app.register(collection: authController)
     try app.register(collection: discussionController)
-    try app.register(collection: commentController)
+    // try app.register(collection: commentController)
 
     app.get { req async throws -> Response in
         return try await frontendProxy(req)
@@ -40,9 +40,9 @@ func routes(_ app: Application) throws {
         return try await frontendProxy(req)
     }
 
-    app.webSocket("ws", "comments") { _, ws in
-        wsManagerComments.addConnection(ws)
-    }
+    // app.webSocket("ws", "comments") { _, ws in
+    //     wsManagerComments.addConnection(ws)
+    // }
 
     // app.post("auth", "register") { req async throws -> User in
     //     try User.Create.validate(content: req)
