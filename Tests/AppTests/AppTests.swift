@@ -270,4 +270,16 @@ struct AppTests {
             })
         }
     }
+
+    @Test("Test deleting 2nd user")
+    func testDeleteMe2() async throws {
+        try await withApp { app in
+            try await app.testing().test(.DELETE, "/auth/me", beforeRequest: { req in
+                print(authToken2 ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken2!)
+            }, afterResponse: { res in
+                #expect(res.status == .seeOther)
+            })
+        }
+    }
 }
