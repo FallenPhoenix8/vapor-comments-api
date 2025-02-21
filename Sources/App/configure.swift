@@ -40,7 +40,7 @@ public func configure(_ app: Application) async throws {
     )
 
     app.migrations.add(User.Migration(), to: .psql)
-    app.migrations.add(CreateDiscussion(), to: .psql)
+    app.migrations.add(Discussion.Migration(), to: .psql)
     app.migrations.add(Participant.Migration(), to: .psql)
     app.migrations.add(CreateComments(), to: .psql)
 

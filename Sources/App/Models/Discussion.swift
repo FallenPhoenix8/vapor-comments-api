@@ -10,6 +10,9 @@ final class Discussion: Model, Content, @unchecked Sendable, Codable {
     @Field(key: "title")
     var title: String
 
+    @Field(key: "picture")
+    var picture: String?
+
     @Timestamp(key: "createdAt", on: .create)
     var createdAt: Date?
 
@@ -27,12 +30,34 @@ final class Discussion: Model, Content, @unchecked Sendable, Codable {
 
     init() {}
 
-    init(id: UUID? = nil, title: String, createdAt: Date? = nil, updatedAt: Date? = nil, authorId: User.IDValue) {
+    init(id: UUID? = nil, title: String, createdAt: Date? = nil, updatedAt: Date? = nil, picture: String? = nil, authorId: User.IDValue) {
         self.id = id
         self.title = title
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         $author.id = authorId
+        self.picture = picture
+    }
+}
+
+extension Discussion {
+    struct Migration: AsyncMigration {
+        var name: String { "CreateDiscussion" }
+        public func prepare(on database: Database) async throws {
+            try await database.schema("discussions")
+                .id()
+                .field("title", .string, .required)
+                .field("createdAt", .datetime, .required)
+                .field("updatedAt", .datetime, .required)
+                .field("userId", .uuid, .required, .references("users", "id"))
+                .field("picture", .string)
+                .unique(on: "title")
+                .create()
+        }
+
+        public func revert(on database: Database) async throws {
+            try await database.schema("discussions").delete()
+        }
     }
 }
 
