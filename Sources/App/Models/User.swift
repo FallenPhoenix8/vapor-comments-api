@@ -14,15 +14,19 @@ final class User: Model, Content, @unchecked Sendable {
     @Field(key: "passwordHash")
     var passwordHash: String
 
+    @Field(key: "profilePicture")
+    var profilePicture: String?
+
     @Children(for: \.$user)
     var participants: [Participant]
 
     init() {}
 
-    init(id: UUID? = nil, username: String, passwordHash: String) {
+    init(id: UUID? = nil, username: String, passwordHash: String, profilePicture: String? = nil) {
         self.id = id
         self.username = username
         self.passwordHash = passwordHash
+        self.profilePicture = profilePicture
     }
 
     init(request: Request) async throws {
@@ -48,6 +52,7 @@ extension User {
                 .field("username", .string, .required)
                 .unique(on: "username")
                 .field("passwordHash", .string, .required)
+                .field("profilePicture", .string)
                 .create()
         }
 
