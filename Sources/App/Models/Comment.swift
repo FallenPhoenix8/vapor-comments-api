@@ -181,6 +181,26 @@ final class Comment: Model, @unchecked Sendable, Content {
 }
 
 extension Comment {
+    struct Migration: AsyncMigration {
+        var name: String { "CreateComment" }
+        public func prepare(on database: Database) async throws {
+            try await database.schema("comments")
+                .id()
+                .field("content", .string, .required)
+                .field("createdAt", .datetime, .required)
+                .field("updatedAt", .datetime, .required)
+                .field("discussionId", .uuid, .required, .references("discussions", "id"))
+                .field("participantId", .uuid, .required, .references("participants", "id"))
+                .create()
+        }
+
+        public func revert(on database: Database) async throws {
+            try await database.schema("comments").delete()
+        }
+    }
+}
+
+extension Comment {
     func toDictionary() -> [String: String] {
         let dateFormatter = ISO8601DateFormatter()
         let createdAtString = dateFormatter.string(from: createdAt!)
