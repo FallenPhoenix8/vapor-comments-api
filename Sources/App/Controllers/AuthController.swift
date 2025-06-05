@@ -40,8 +40,21 @@ final class AuthController: RouteCollection, Sendable {
         ]
         let jsonData = try JSONSerialization.data(withJSONObject: json)
         let resStatus: HTTPStatus = isRegister ? .created : .ok
-        let resHeaders: HTTPHeaders = ["Content-Type": "application/json"]
-        let res: Response = .init(status: resStatus, headers: resHeaders, body: .init(data: jsonData))
+        // let resHeaders: HTTPHeaders = ["Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Set-Cookie": "token=\(token); Max-Age=604800; Path=/"]
+        let res: Response = .init(status: resStatus, body: .init(data: jsonData))
+
+        res.headers.replaceOrAdd(name: .contentType, value: "application/json")
+        // res.headers.replaceOrAdd(name: .accessControlAllowOrigin, value: Environment.get("FRONTEND_URL") ?? "*")
+        // res.headers.replaceOrAdd(name: .accessControlAllowCredentials, value: "true")
+
+        res.cookies["token"] = HTTPCookies.Value(
+            string: token,
+            expires: expiration,
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: "/",
+            isHTTPOnly: true,
+            sameSite: .lax
+        )
 
         return res
     }

@@ -28,8 +28,9 @@ func routes(_ app: Application) throws {
     let authController = AuthController()
     let discussionController = DiscussionController()
     // let commentController = CommentController()
-    try app.register(collection: authController)
-    try app.register(collection: discussionController)
+    let api = app.grouped("api")
+    try api.register(collection: authController)
+    try api.register(collection: discussionController)
     // try app.register(collection: commentController)
 
     app.get { req async throws -> Response in

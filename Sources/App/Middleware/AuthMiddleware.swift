@@ -7,6 +7,12 @@ struct AuthMiddleware: AsyncMiddleware {
             token = req.headers.bearerAuthorization?.token
         }
 
+        if token == nil {
+            token = req.session.data["token"]
+        }
+
+        // print("Token: \(token ?? "NOT FOUND")")
+
         guard let token = token else {
             throw Abort(.unauthorized, reason: "No token found in session or headers")
         }

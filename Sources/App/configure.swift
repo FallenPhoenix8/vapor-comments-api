@@ -10,9 +10,10 @@ public func configure(_ app: Application) async throws {
     // app.middleware.use(NoCacheMiddleware())
     // register routes
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin: .all,
+        allowedOrigin: .custom(Environment.get("FRONTEND_URL") ?? "*"),
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
-        allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin]
+        allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin],
+        allowCredentials: true
     )
     let cors = CORSMiddleware(configuration: corsConfiguration)
     // cors middleware should come before default error middleware using `at: .beginning`
