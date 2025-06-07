@@ -8,6 +8,8 @@ nonisolated(unsafe) var authToken: String?
 nonisolated(unsafe) var discussionId: String?
 nonisolated(unsafe) var commentId: String?
 nonisolated(unsafe) var authToken2: String?
+let username1 = "testUsername"
+let nonexistentUsername = "fakeUsername"
 
 @Suite("App Tests", .serialized)
 struct AppTests {
@@ -35,7 +37,7 @@ struct AppTests {
     mutating func createUser() async throws {
         try await withApp { app in
             let json: [String: Any] = [
-                "username": "testUsername",
+                "username": username1,
                 "password": "testPassword",
                 "confirmPassword": "testPassword",
             ]
@@ -53,6 +55,18 @@ struct AppTests {
                 }
 
                 #expect(res.status == .created && authToken != nil)
+            })
+        }
+    }
+
+    @Test("Test username exists")
+    func isUsernameExists() async throws {
+        try await withApp { app in
+            try await app.testing().test(.GET, "/api/auth/username-exists?username=\(username1)", afterResponse: { res in
+                #expect(res.status == .ok)
+            })
+            try await app.testing().test(.GET, "/api/auth/username-exists?username=\(nonexistentUsername)", afterResponse: { res in
+                #expect(res.status == .notFound)
             })
         }
     }

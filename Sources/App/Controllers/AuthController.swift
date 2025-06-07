@@ -24,6 +24,7 @@ final class AuthController: RouteCollection, Sendable {
         protected.get("me", use: getMe)
 
         protected.get("is-authenticated", use: isAuthenticated)
+        auth.get("username-exists", use: isUsernameExists)
     }
 
     func setSessionToken(request: Request, userUuid: UUID, isRegister: Bool = false) async throws -> Response {
@@ -129,6 +130,19 @@ final class AuthController: RouteCollection, Sendable {
             return Response(status: .ok, body: .init(string: "true"))
         } catch {
             return Response(status: .unauthorized, body: .init(string: "false"))
+        }
+    }
+
+    @Sendable func isUsernameExists(req: Request) async throws -> Response {
+        guard let username = try? req.query.get(String.self, at: "username") else {
+            throw Abort(.badRequest, reason: "username is missing")
+        }
+
+        let user = try await req.db.query(User.self).filter(\.$username == username).first()
+        if let _ = user {
+            return Response(status: .ok, body: .init(string: "true"))
+        } else {
+            return Response(status: .notFound, body: .init(string: "false"))
         }
     }
 }
