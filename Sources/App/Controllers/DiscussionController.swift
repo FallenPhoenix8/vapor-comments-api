@@ -15,8 +15,8 @@ func broadcastUpdate(_ req: Request, discussionId: UUID) async throws {
 
 struct DiscussionController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
-        let api = routes.grouped("api")
-        let discussions = api.grouped("discussions")
+        // let api = routes.grouped("api")
+        let discussions = routes.grouped("discussions")
         let protected = discussions.grouped(AuthMiddleware())
         discussions.get(use: index)
         protected.post("create", ":title", use: create)

@@ -24,7 +24,7 @@ struct AppTests {
     }
 
     @Test("Test migrating database")
-    func testMigrateDatabase() async throws {
+    func migrateDatabase() async throws {
         try await withApp { app in
             try await app.autoRevert()
             try await app.autoMigrate()
@@ -32,7 +32,7 @@ struct AppTests {
     }
 
     @Test("Test register user")
-    mutating func testCreateUser() async throws {
+    mutating func createUser() async throws {
         try await withApp { app in
             let json: [String: Any] = [
                 "username": "testUsername",
@@ -41,11 +41,10 @@ struct AppTests {
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: json)
 
-            try await app.testing().test(.POST, "/auth/register", beforeRequest: { req in
+            try await app.testing().test(.POST, "/api/auth/register", beforeRequest: { req in
                 req.headers.contentType = .json
                 req.body = .init(data: jsonData)
             }, afterResponse: { res in
-
                 authToken = try res.content.decode([String: String].self)["token"]
                 if let token = authToken {
                     print("Token: \(token)")
@@ -59,9 +58,9 @@ struct AppTests {
     }
 
     @Test("Test logging user out")
-    func testLogout() async throws {
+    func logout() async throws {
         try await withApp { app in
-            try await app.testing().test(.POST, "/auth/logout", beforeRequest: { req in
+            try await app.testing().test(.POST, "/api/auth/logout", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
                 req.headers.bearerAuthorization = .init(token: authToken!)
             }, afterResponse: { res in
@@ -72,7 +71,7 @@ struct AppTests {
     }
 
     @Test("Test logging user in")
-    func testLogin() async throws {
+    func login() async throws {
         try await withApp { app in
             let json: [String: Any] = [
                 "username": "testUsername",
@@ -80,7 +79,7 @@ struct AppTests {
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: json)
 
-            try await app.testing().test(.POST, "/auth/login", beforeRequest: { req in
+            try await app.testing().test(.POST, "/api/auth/login", beforeRequest: { req in
                 req.headers.contentType = .json
                 req.body = .init(data: jsonData)
             }, afterResponse: { res in
@@ -91,9 +90,9 @@ struct AppTests {
     }
 
     @Test("Test getting current user")
-    func testGetMe() async throws {
+    func getMe() async throws {
         try await withApp { app in
-            try await app.testing().test(.GET, "/auth/me", beforeRequest: { req in
+            try await app.testing().test(.GET, "/api/auth/me", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
                 req.headers.bearerAuthorization = .init(token: authToken!)
 
@@ -103,8 +102,20 @@ struct AppTests {
         }
     }
 
+    @Test("Test checking if user is authenticated")
+    func isAuthenticated() async throws {
+        try await withApp { app in
+            try await app.testing().test(.GET, "/api/auth/is-authenticated", beforeRequest: { req in
+                print(authToken ?? "TOKEN NOT FOUND")
+                req.headers.bearerAuthorization = .init(token: authToken!)
+            }, afterResponse: { res in
+                #expect(res.status == .ok)
+            })
+        }
+    }
+
     @Test("Test adding discussion")
-    func testAddDiscussion() async throws {
+    func addDiscussion() async throws {
         try await withApp { app in
             try await app.testing().test(.POST, "/api/discussions/create/test", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
@@ -116,7 +127,7 @@ struct AppTests {
     }
 
     @Test("Test getting all discussions")
-    func testGetDiscussions() async throws {
+    func getDiscussions() async throws {
         try await withApp { app in
             try await app.testing().test(.GET, "/api/discussions", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
@@ -131,7 +142,7 @@ struct AppTests {
     }
 
     @Test("Register 2nd user")
-    mutating func testCreateUser2() async throws {
+    mutating func createUser2() async throws {
         try await withApp { app in
             let json: [String: Any] = [
                 "username": "someoneElse",
@@ -140,11 +151,10 @@ struct AppTests {
             ]
             let jsonData = try JSONSerialization.data(withJSONObject: json)
 
-            try await app.testing().test(.POST, "/auth/register", beforeRequest: { req in
+            try await app.testing().test(.POST, "/api/auth/register", beforeRequest: { req in
                 req.headers.contentType = .json
                 req.body = .init(data: jsonData)
             }, afterResponse: { res in
-
                 authToken2 = try res.content.decode([String: String].self)["token"]
                 if let token = authToken {
                     print("Token: \(token)")
@@ -159,7 +169,7 @@ struct AppTests {
 
     @Test("Test joining discussion")
 
-    func testJoinDiscussion() async throws {
+    func joinDiscussion() async throws {
         try await withApp { app in
             try await app.testing().test(.POST,
                                          "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/join",
@@ -174,7 +184,7 @@ struct AppTests {
     }
 
     @Test("Test adding comment")
-    func testAddComment() async throws {
+    func addComment() async throws {
         try await withApp { app in
             try await app.testing().test(.POST, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/comments/add?content=test", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
@@ -186,7 +196,7 @@ struct AppTests {
     }
 
     @Test("Test getting discussion details")
-    func testGetComments() async throws {
+    func getComments() async throws {
         try await withApp { app in
             try await app.testing().test(.GET, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/details",
                                          beforeRequest: { req in
@@ -210,7 +220,7 @@ struct AppTests {
     }
 
     @Test("Test deleting comment")
-    func testDeleteComment() async throws {
+    func deleteComment() async throws {
         try await withApp { app in
             try await app.testing().test(.DELETE, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/comments/delete/\(commentId ?? "COMMENT ID NOT FOUND")", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
@@ -223,7 +233,7 @@ struct AppTests {
     }
 
     @Test("Test leaving discussion")
-    func testLeaveDiscussion() async throws {
+    func leaveDiscussion() async throws {
         try await withApp { app in
             try await app.testing().test(.DELETE, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/leave", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
@@ -235,7 +245,7 @@ struct AppTests {
     }
 
     @Test("Test leaving discussion 2nd user")
-    func testLeaveDiscussion2() async throws {
+    func leaveDiscussion2() async throws {
         try await withApp { app in
             try await app.testing().test(.DELETE, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/leave", beforeRequest: { req in
                 print(authToken2 ?? "TOKEN NOT FOUND")
@@ -247,7 +257,7 @@ struct AppTests {
     }
 
     @Test("Test deleting discussion")
-    func testDeleteDiscussion() async throws {
+    func deleteDiscussion() async throws {
         try await withApp { app in
             try await app.testing().test(.DELETE, "/api/discussions/\(discussionId ?? "DISCUSSION ID NOT FOUND")/delete", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
@@ -260,9 +270,9 @@ struct AppTests {
     }
 
     @Test("Test deleting user")
-    func testDeleteMe() async throws {
+    func deleteMe() async throws {
         try await withApp { app in
-            try await app.testing().test(.DELETE, "/auth/me", beforeRequest: { req in
+            try await app.testing().test(.DELETE, "/api/auth/me", beforeRequest: { req in
                 print(authToken ?? "TOKEN NOT FOUND")
                 req.headers.bearerAuthorization = .init(token: authToken!)
             }, afterResponse: { res in
@@ -272,9 +282,9 @@ struct AppTests {
     }
 
     @Test("Test deleting 2nd user")
-    func testDeleteMe2() async throws {
+    func deleteMe2() async throws {
         try await withApp { app in
-            try await app.testing().test(.DELETE, "/auth/me", beforeRequest: { req in
+            try await app.testing().test(.DELETE, "/api/auth/me", beforeRequest: { req in
                 print(authToken2 ?? "TOKEN NOT FOUND")
                 req.headers.bearerAuthorization = .init(token: authToken2!)
             }, afterResponse: { res in

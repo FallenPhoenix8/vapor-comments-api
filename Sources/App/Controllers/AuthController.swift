@@ -22,6 +22,8 @@ final class AuthController: RouteCollection, Sendable {
 
         protected.delete("me", use: deleteMe)
         protected.get("me", use: getMe)
+
+        protected.get("is-authenticated", use: isAuthenticated)
     }
 
     func setSessionToken(request: Request, userUuid: UUID, isRegister: Bool = false) async throws -> Response {
@@ -119,5 +121,14 @@ final class AuthController: RouteCollection, Sendable {
         let user = try await req.user()
         try await user.delete(on: req.db)
         return req.redirect(to: "/")
+    }
+
+    @Sendable func isAuthenticated(req: Request) async -> Response {
+        do {
+            _ = try await req.user()
+            return Response(status: .ok, body: .init(string: "true"))
+        } catch {
+            return Response(status: .unauthorized, body: .init(string: "false"))
+        }
     }
 }
