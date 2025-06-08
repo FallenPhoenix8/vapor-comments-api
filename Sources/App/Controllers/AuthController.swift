@@ -50,15 +50,6 @@ final class AuthController: RouteCollection, Sendable {
         // res.headers.replaceOrAdd(name: .accessControlAllowOrigin, value: Environment.get("FRONTEND_URL") ?? "*")
         // res.headers.replaceOrAdd(name: .accessControlAllowCredentials, value: "true")
 
-        res.cookies["token"] = HTTPCookies.Value(
-            string: token,
-            expires: expiration,
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            path: "/",
-            isHTTPOnly: true,
-            sameSite: .lax
-        )
-
         return res
     }
 
@@ -115,6 +106,20 @@ final class AuthController: RouteCollection, Sendable {
     @Sendable func logout(req: Request) async throws -> Response {
         req.session.data["token"] = nil
         req.session.destroy()
+
+        req.headers.bearerAuthorization = nil
+        // req.cookies["token"] = HTTPCookies.Value(
+        //     string: "",
+        //     expires: Date(timeIntervalSince1970: 0),
+        //     maxAge: 0,
+        //     domain: nil,
+        //     path: "/",
+        //     isSecure: true,
+        //     isHTTPOnly: true,
+        //     sameSite: .lax
+        // )
+
+        // print(req.cookies)
         return req.redirect(to: "/")
     }
 
@@ -138,11 +143,23 @@ final class AuthController: RouteCollection, Sendable {
             throw Abort(.badRequest, reason: "username is missing")
         }
 
+        if username.isEmpty {
+            throw Abort(.badRequest, reason: "username is empty")
+        }
+
+        var dictionary: [String: Bool] = [:]
+
         let user = try await req.db.query(User.self).filter(\.$username == username).first()
         if let _ = user {
-            return Response(status: .ok, body: .init(string: "true"))
+            dictionary["exists"] = true
+            let jsonData = try JSONEncoder().encode(dictionary)
+
+            return Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
         } else {
-            return Response(status: .notFound, body: .init(string: "false"))
+            dictionary["exists"] = false
+            let jsonData = try JSONEncoder().encode(dictionary)
+
+            return Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
         }
     }
 }

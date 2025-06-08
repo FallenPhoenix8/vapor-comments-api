@@ -66,7 +66,7 @@ struct AppTests {
                 #expect(res.status == .ok)
             })
             try await app.testing().test(.GET, "/api/auth/username-exists?username=\(nonexistentUsername)", afterResponse: { res in
-                #expect(res.status == .notFound)
+                #expect(res.status == .ok)
             })
         }
     }

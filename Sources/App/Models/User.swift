@@ -30,7 +30,9 @@ final class User: Model, Content, @unchecked Sendable {
     }
 
     init(request: Request) async throws {
-        let token = request.cookies["token"]?.string ?? request.session.data["token"] ?? request.headers.bearerAuthorization!.token
+        // let token = request.cookies["token"]?.string ?? request.session.data["token"] ?? request.headers.bearerAuthorization!.token
+
+        let token = request.session.data["token"] ?? request.headers.bearerAuthorization!.token
 
         let payload = try await request.jwt.verify(token, as: User.Payload.self)
         id = UUID(uuidString: payload.subject.value)

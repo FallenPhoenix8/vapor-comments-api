@@ -7,9 +7,13 @@ struct AuthMiddleware: AsyncMiddleware {
             token = req.headers.bearerAuthorization?.token
         }
 
-        if token == nil {
-            token = req.session.data["token"]
-        }
+        // if token == nil {
+        //     token = req.session.data["token"]
+        // }
+
+        // if token == nil {
+        //     token = req.cookies["token"]?.string
+        // }
 
         // print("Token: \(token ?? "NOT FOUND")")
 
