@@ -6,6 +6,7 @@ final class AuthController: RouteCollection, Sendable {
     func boot(routes: RoutesBuilder) throws {
         let auth = routes.grouped("auth")
         let protected = auth.grouped(AuthMiddleware())
+        let users = routes.grouped("users")
 
         auth.post("register", use: register)
         auth.get("register") { _ throws -> Response in
@@ -25,6 +26,8 @@ final class AuthController: RouteCollection, Sendable {
 
         protected.get("is-authenticated", use: isAuthenticated)
         auth.get("username-exists", use: isUsernameExists)
+
+        users.get(":userUuid", use: getUserByUuid)
     }
 
     func setSessionToken(request: Request, userUuid: UUID, isRegister: Bool = false) async throws -> Response {
@@ -162,5 +165,26 @@ final class AuthController: RouteCollection, Sendable {
 
             return Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
         }
+    }
+
+    @Sendable func getUserByUuid(req: Request) async throws -> Response {
+        let uuid = try req.parameters.require("userUuid")
+        let userUuid = UUID(uuidString: uuid)
+        guard let userUuid = userUuid else {
+            throw Abort(.badRequest, reason: "Invalid UUID")
+        }
+        
+        let user = try await req.db.query(User.self).filter(\.$id == userUuid).first()
+        guard let user = user else {
+            throw Abort(.unauthorized, reason: "User not found")
+        }
+        let json: [String: Any] = [
+            "id": user.$id.value!.uuidString,
+            "username": user.$username.value!,
+            "profilePicture": user.$profilePicture.value! ?? "null",
+        ]
+
+        let jsonData = try JSONSerialization.data(withJSONObject: json)
+        return Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
     }
 }

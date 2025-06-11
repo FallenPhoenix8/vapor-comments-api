@@ -27,6 +27,7 @@ struct DiscussionController: RouteCollection {
         protected.webSocket(":discussionId", "ws") { req, ws in
             await wsDiscussion(req, ws: ws, store: store)
         }
+        protected.get(":discussionId", "is-participant", use: isParticipant)
 
         // comments
         let discussionId = discussions.grouped(":discussionId")
@@ -221,5 +222,24 @@ struct DiscussionController: RouteCollection {
         try await broadcastUpdate(req, discussionId: discussion.requireID())
 
         return req.redirect(to: "/api/discussions/\(discussionId)/comments")
+    }
+
+    @Sendable
+    func isParticipant(_ req: Request) async throws -> Bool {
+        let discussionId = try req.parameters.require("discussionId")
+
+        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+        guard let discussion = discussion else {
+            throw Abort(.notFound, reason: "Discussion not found")
+        }
+
+        let user = try await req.user()
+        print(try await req.user())
+        let testParticipant = try await Participant.query(on: req.db)
+            .filter(\.$discussion.$id == discussion.requireID())
+            .filter(\.$user.$id == user.requireID())
+            .first()
+
+        return testParticipant != nil
     }
 }
