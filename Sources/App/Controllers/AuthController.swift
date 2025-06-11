@@ -37,6 +37,7 @@ final class AuthController: RouteCollection, Sendable {
 
         request.headers.bearerAuthorization = .init(token: token)
         request.session.data["token"] = token
+        print(request.session.data)
 
         let json: [String: Any] = [
             "token": token,

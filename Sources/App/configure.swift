@@ -10,7 +10,7 @@ public func configure(_ app: Application) async throws {
     // app.middleware.use(NoCacheMiddleware())
     // register routes
     let corsConfiguration = CORSMiddleware.Configuration(
-        allowedOrigin: .custom(Environment.get("FRONTEND_URL") ?? "*"),
+        allowedOrigin: .custom(Environment.get("FRONTEND_URL")!),
         allowedMethods: [.GET, .POST, .PUT, .OPTIONS, .DELETE, .PATCH],
         allowedHeaders: [.accept, .authorization, .contentType, .origin, .xRequestedWith, .userAgent, .accessControlAllowOrigin],
         allowCredentials: true
@@ -22,7 +22,7 @@ public func configure(_ app: Application) async throws {
     app.sessions.configuration.cookieName = "vapor-comments"
 
     app.sessions.configuration.cookieFactory = { sessionId in
-        .init(string: sessionId.string, isSecure: true)
+        .init(string: sessionId.string)
     }
 
     app.middleware.use(app.sessions.middleware)
