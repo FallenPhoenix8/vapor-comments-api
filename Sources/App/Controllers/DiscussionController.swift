@@ -35,6 +35,11 @@ struct DiscussionController: RouteCollection {
         let protectedComments = comments.grouped(AuthMiddleware())
         protectedComments.post("add", use: addComment)
         protectedComments.delete("delete", ":commentId", use: deleteComment)
+
+        // participants
+        let participants = discussionId.grouped("participants")
+        let protectedParticipants = participants.grouped(AuthMiddleware())
+        protectedParticipants.get(":participantId", use: getParticipantById)
     }
 
     @Sendable
@@ -241,5 +246,28 @@ struct DiscussionController: RouteCollection {
             .first()
 
         return testParticipant != nil
+    }
+
+    @Sendable func getParticipantById(_ req: Request) async throws -> Participant {
+        let participantId = try req.parameters.require("participantId")
+        let participantUUID = UUID(uuidString: participantId)
+
+        guard let participantUUID = participantUUID else {
+            throw Abort(.notFound, reason: "Participant not found")
+        }
+
+        // let participant = try await Participant
+        // .find(UUID(uuidString: participantId), on: req.db)
+        
+        let participant = try await Participant.query(on: req.db)
+        .with(\.$user)
+        .filter(\.$id == participantUUID)
+        .first()
+        
+        guard let participant = participant else {
+            throw Abort(.notFound, reason: "Participant not found")
+        }
+
+        return participant
     }
 }
