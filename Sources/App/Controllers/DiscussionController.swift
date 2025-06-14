@@ -29,8 +29,9 @@ struct DiscussionController: RouteCollection {
         }
         protected.get(":discussionId", "is-participant", use: isParticipant)
 
-        // comments
         let discussionId = discussions.grouped(":discussionId")
+
+        // comments
         let comments = discussionId.grouped("comments")
         let protectedComments = comments.grouped(AuthMiddleware())
         protectedComments.post("add", use: addComment)
@@ -40,6 +41,8 @@ struct DiscussionController: RouteCollection {
         let participants = discussionId.grouped("participants")
         let protectedParticipants = participants.grouped(AuthMiddleware())
         protectedParticipants.get(":participantId", use: getParticipantById)
+        protectedParticipants.get("user", ":userId", use: getParticipantByUserId)
+        protectedParticipants.delete(":participantId", "comments", use: deleteCommentsFromParticipant)
     }
 
     @Sendable
@@ -263,11 +266,71 @@ struct DiscussionController: RouteCollection {
         .with(\.$user)
         .filter(\.$id == participantUUID)
         .first()
-        
+
         guard let participant = participant else {
             throw Abort(.notFound, reason: "Participant not found")
         }
 
         return participant
     }
+
+    @Sendable func getParticipantByUserId(_ req: Request) async throws -> Participant {
+        let userId = try req.parameters.require("userId")
+        let userUUID = UUID(uuidString: userId)
+
+        guard let userUUID = userUUID else {
+            throw Abort(.notFound, reason: "User not found")
+        }
+
+        let discussionId = try req.parameters.require("discussionId")
+        let discussionUUID = UUID(uuidString: discussionId)
+
+        guard let discussionUUID = discussionUUID else {
+            throw Abort(.notFound, reason: "Discussion not found")
+        }
+
+        let participant = try await Participant.query(on: req.db)
+        .with(\.$discussion)
+        .with(\.$user)
+        .filter(\.$discussion.$id == discussionUUID)
+        .filter(\.$user.$id == userUUID)
+        .first()
+
+        guard let participant = participant else {
+            throw Abort(.notFound, reason: "Participant not found")
+        }
+
+        return participant
+    }
+
+    @Sendable func deleteCommentsFromParticipant(_ req: Request) async throws -> Response {
+        let discussionId = try req.parameters.require("discussionId")
+        let discussionUUID = UUID(uuidString: discussionId)
+
+        guard let discussionUUID = discussionUUID else {
+            throw Abort(.notFound, reason: "Discussion not found")
+        }
+
+        let user = try await req.user()
+        let userUUID = try user.requireID()
+
+        let participant = try await Participant.query(on: req.db)
+        .with(\.$discussion)
+        .filter(\.$discussion.$id == discussionUUID)
+        .filter(\.$user.$id == userUUID)
+        .first()
+
+        guard let participant = participant else {
+            throw Abort(.notFound, reason: "Participant not found")
+        }
+
+        try await Comment.query(on: req.db)
+        .filter(\.$participant.$id == participant.requireID())
+        .delete()
+
+        try await broadcastUpdate(req, discussionId: discussionUUID)
+
+        return Response(status: .ok, body: .init(string: "Successfully deleted comments"))
+    }
+
 }
