@@ -19,6 +19,8 @@ struct DiscussionController: RouteCollection {
     let discussions = routes.grouped("discussions")
     let protected = discussions.grouped(AuthMiddleware())
     discussions.get(use: index)
+    discussions.get("is-title-taken", ":title", use: isTitleTaken)
+
     protected.post("create", ":title", use: create)
     protected.delete(":discussionId", "delete", use: delete)
     protected.delete(":discussionId", "leave", use: leave)
@@ -340,4 +342,8 @@ struct DiscussionController: RouteCollection {
     return Response(status: .ok, body: .init(string: "Successfully deleted comments"))
   }
 
+  @Sendable func isTitleTaken(_ req: Request) async throws -> Bool {
+    let title = try req.parameters.require("title")
+    return try await Discussion.isTitleTaken(title, on: req.db)
+  }
 }

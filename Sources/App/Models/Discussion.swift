@@ -85,4 +85,11 @@ extension Discussion {
     return discussion
   }
 
+  static func isTitleTaken(_ title: String, on: any Database) async throws -> Bool {
+    let discussion = try await Discussion.query(on: on)
+      .filter(\.$title == title)
+      .first()
+
+    return discussion != nil
+  }
 }
