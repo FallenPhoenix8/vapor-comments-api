@@ -4,333 +4,340 @@ import Vapor
 let store = WebSocketManagerStore()
 
 func broadcastUpdate(_ req: Request, discussionId: UUID) async throws {
-    let discussionDetails = try await Discussion.getDetails(request: req, discussionId: discussionId)
+  let discussionDetails = try await Discussion.getDetails(request: req, discussionId: discussionId)
 
-    let wsManager = await store.getWebSocket(for: discussionId)
+  let wsManager = await store.getWebSocket(for: discussionId)
 
-    if let wsManager = wsManager {
-        wsManager.broadcast(discussionDetails.getJSONData())
-    }
+  if let wsManager = wsManager {
+    wsManager.broadcast(discussionDetails.getJSONData(), messageType: "discussion-update")
+  }
 }
 
 struct DiscussionController: RouteCollection {
-    func boot(routes: RoutesBuilder) throws {
-        // let api = routes.grouped("api")
-        let discussions = routes.grouped("discussions")
-        let protected = discussions.grouped(AuthMiddleware())
-        discussions.get(use: index)
-        protected.post("create", ":title", use: create)
-        protected.delete(":discussionId", "delete", use: delete)
-        protected.delete(":discussionId", "leave", use: leave)
-        protected.post(":discussionId", "join", use: join)
-        protected.get(":discussionId", "details", use: getDetails)
-        protected.webSocket(":discussionId", "ws") { req, ws in
-            await wsDiscussion(req, ws: ws, store: store)
-        }
-        protected.get(":discussionId", "is-participant", use: isParticipant)
+  func boot(routes: RoutesBuilder) throws {
+    // let api = routes.grouped("api")
+    let discussions = routes.grouped("discussions")
+    let protected = discussions.grouped(AuthMiddleware())
+    discussions.get(use: index)
+    protected.post("create", ":title", use: create)
+    protected.delete(":discussionId", "delete", use: delete)
+    protected.delete(":discussionId", "leave", use: leave)
+    protected.post(":discussionId", "join", use: join)
+    protected.get(":discussionId", "details", use: getDetails)
+    protected.webSocket(":discussionId", "ws") { req, ws in
+      await wsDiscussion(req, ws: ws, store: store)
+    }
+    protected.get(":discussionId", "is-participant", use: isParticipant)
 
-        let discussionId = discussions.grouped(":discussionId")
+    let discussionId = discussions.grouped(":discussionId")
 
-        // comments
-        let comments = discussionId.grouped("comments")
-        let protectedComments = comments.grouped(AuthMiddleware())
-        protectedComments.post("add", use: addComment)
-        protectedComments.delete("delete", ":commentId", use: deleteComment)
+    // comments
+    let comments = discussionId.grouped("comments")
+    let protectedComments = comments.grouped(AuthMiddleware())
+    protectedComments.post("add", use: addComment)
+    protectedComments.delete("delete", ":commentId", use: deleteComment)
 
-        // participants
-        let participants = discussionId.grouped("participants")
-        let protectedParticipants = participants.grouped(AuthMiddleware())
-        protectedParticipants.get(":participantId", use: getParticipantById)
-        protectedParticipants.get("user", ":userId", use: getParticipantByUserId)
-        protectedParticipants.delete(":participantId", "comments", use: deleteCommentsFromParticipant)
+    // participants
+    let participants = discussionId.grouped("participants")
+    let protectedParticipants = participants.grouped(AuthMiddleware())
+    protectedParticipants.get(":participantId", use: getParticipantById)
+    protectedParticipants.get("user", ":userId", use: getParticipantByUserId)
+    protectedParticipants.delete(":participantId", "comments", use: deleteCommentsFromParticipant)
+  }
+
+  @Sendable
+  func index(_ req: Request) async throws -> [Discussion] {
+    return try await Discussion.query(on: req.db)
+      .sort(\.$createdAt, .descending)
+      .all()
+  }
+
+  @Sendable
+  func create(_ req: Request) async throws -> Response {
+    guard let title = req.parameters.get("title") else {
+      throw Abort(.badRequest, reason: "Missing title")
     }
 
-    @Sendable
-    func index(_ req: Request) async throws -> [Discussion] {
-        return try await Discussion.query(on: req.db)
-            .sort(\.$createdAt, .descending)
-            .all()
+    let user = try await req.user()
+
+    let discussion = Discussion(title: title, authorId: user.$id.value!)
+
+    try await discussion.save(on: req.db)
+
+    let participant = try Participant(
+      discussionId: discussion.requireID(), userId: user.requireID(), isAuthor: true)
+    try await participant.save(on: req.db)
+
+    return req.redirect(to: "/api/discussions")
+  }
+
+  @Sendable
+  func delete(_ req: Request) async throws -> Response {
+    let discussionId = try req.parameters.require("discussionId")
+
+    let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+    guard let discussion = discussion else {
+      throw Abort(.notFound, reason: "Discussion not found")
     }
 
-    @Sendable
-    func create(_ req: Request) async throws -> Response {
-        guard let title = req.parameters.get("title") else {
-            throw Abort(.badRequest, reason: "Missing title")
-        }
+    try await discussion.delete(on: req.db)
+    // let discussions = try await Discussion.query(on: req.db).all()
+    // let discussionsJSON: [[String: String]] = discussions.map { discussion in
+    //     discussion.toDictionary()
+    // }
+    // let jsonData = try JSONEncoder().encode(discussionsJSON)
+    // let res = Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
 
-        let user = try await req.user()
+    return req.redirect(to: "/api/discussions")
+  }
 
-        let discussion = Discussion(title: title, authorId: user.$id.value!)
+  @Sendable
+  func join(_ req: Request) async throws -> Response {
+    let discussionId = try req.parameters.require("discussionId")
 
-        try await discussion.save(on: req.db)
-
-        let participant = try Participant(discussionId: discussion.requireID(), userId: user.requireID(), isAuthor: true)
-        try await participant.save(on: req.db)
-
-        return req.redirect(to: "/api/discussions")
+    let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+    guard let discussion = discussion else {
+      throw Abort(.notFound, reason: "Discussion not found")
     }
 
-    @Sendable
-    func delete(_ req: Request) async throws -> Response {
-        let discussionId = try req.parameters.require("discussionId")
+    let user = try await req.user()
+    let testParticipant = try await Participant.query(on: req.db)
+      .filter(\.$discussion.$id == discussion.requireID())
+      .filter(\.$user.$id == user.requireID())
+      .first()
 
-        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
-
-        try await discussion.delete(on: req.db)
-        // let discussions = try await Discussion.query(on: req.db).all()
-        // let discussionsJSON: [[String: String]] = discussions.map { discussion in
-        //     discussion.toDictionary()
-        // }
-        // let jsonData = try JSONEncoder().encode(discussionsJSON)
-        // let res = Response(status: .ok, headers: ["Content-Type": "application/json"], body: .init(data: jsonData))
-
-        return req.redirect(to: "/api/discussions")
+    guard testParticipant == nil else {
+      throw Abort(.badRequest, reason: "User already joined discussion")
     }
 
-    @Sendable
-    func join(_ req: Request) async throws -> Response {
-        let discussionId = try req.parameters.require("discussionId")
+    let participant = try Participant(
+      discussionId: discussion.requireID(), userId: user.requireID(), isAuthor: false)
 
-        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
+    try await participant.save(on: req.db)
 
-        let user = try await req.user()
-        let testParticipant = try await Participant.query(on: req.db)
-            .filter(\.$discussion.$id == discussion.requireID())
-            .filter(\.$user.$id == user.requireID())
-            .first()
+    try await broadcastUpdate(req, discussionId: discussion.requireID())
 
-        guard testParticipant == nil else {
-            throw Abort(.badRequest, reason: "User already joined discussion")
-        }
+    return Response(status: .ok, body: .init(string: "Successfully joined discussion"))
+  }
 
-        let participant = try Participant(discussionId: discussion.requireID(), userId: user.requireID(), isAuthor: false)
+  @Sendable
+  func getDetails(_ req: Request) async throws -> Discussion {
+    let discussionId = try req.parameters.require("discussionId")
 
-        try await participant.save(on: req.db)
+    let discussion = try await Discussion.getDetails(
+      request: req, discussionId: UUID(uuidString: discussionId) ?? UUID())
 
-        try await broadcastUpdate(req, discussionId: discussion.requireID())
+    let isDiscussionIncludesUser =
+      try await Participant.query(on: req.db)
+      .filter(\.$discussion.$id == discussion.requireID())
+      .filter(\.$user.$id == req.user().requireID())
+      .first() != nil
 
-        return Response(status: .ok, body: .init(string: "Successfully joined discussion"))
+    if !isDiscussionIncludesUser {
+      throw Abort(.unauthorized, reason: "User is not a participant of discussion")
     }
 
-    @Sendable
-    func getDetails(_ req: Request) async throws -> Discussion {
-        let discussionId = try req.parameters.require("discussionId")
+    return discussion
+  }
 
-        let discussion = try await Discussion.getDetails(request: req, discussionId: UUID(uuidString: discussionId) ?? UUID())
+  @Sendable
+  func leave(_ req: Request) async throws -> Response {
+    let discussionId = try req.parameters.require("discussionId")
 
-        let isDiscussionIncludesUser = try await Participant.query(on: req.db)
-            .filter(\.$discussion.$id == discussion.requireID())
-            .filter(\.$user.$id == req.user().requireID())
-            .first() != nil
-
-        if !isDiscussionIncludesUser {
-            throw Abort(.unauthorized, reason: "User is not a participant of discussion")
-        }
-
-        return discussion
+    let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+    guard let discussion = discussion else {
+      throw Abort(.notFound, reason: "Discussion not found")
     }
 
-    @Sendable
-    func leave(_ req: Request) async throws -> Response {
-        let discussionId = try req.parameters.require("discussionId")
+    let user = try await req.user()
+    let participant = try await Participant.query(on: req.db)
+      .filter(\.$discussion.$id == discussion.requireID())
+      .filter(\.$user.$id == user.requireID())
+      .first()
 
-        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
-
-        let user = try await req.user()
-        let participant = try await Participant.query(on: req.db)
-            .filter(\.$discussion.$id == discussion.requireID())
-            .filter(\.$user.$id == user.requireID())
-            .first()
-
-        guard let participant = participant else {
-            throw Abort(.notFound, reason: "Participant not found")
-        }
-
-        try await participant.delete(on: req.db)
-
-        try await broadcastUpdate(req, discussionId: discussion.requireID())
-
-        return Response(status: .ok, body: .init(string: "Successfully left discussion"))
+    guard let participant = participant else {
+      throw Abort(.notFound, reason: "Participant not found")
     }
 
-    @Sendable
-    func wsDiscussion(_ req: Request, ws: WebSocket, store: WebSocketManagerStore) async {
-        do {
-            let discussionDetails = try await getDetails(req)
+    try await participant.delete(on: req.db)
 
-            let discussionManager = try WebSocketManager(threadLabel: discussionDetails.requireID().uuidString)
-            discussionManager.addConnection(ws)
-            let discussionId = try discussionDetails.requireID()
+    try await broadcastUpdate(req, discussionId: discussion.requireID())
 
-            // Safely add the WebSocketManager to the store
-            await store.addWebSocket(for: discussionId, manager: discussionManager)
+    return Response(status: .ok, body: .init(string: "Successfully left discussion"))
+  }
 
-        } catch {
-            print("ERROR CREATING DISCUSSION WEBSOCKET: \(error)")
-        }
+  @Sendable
+  func wsDiscussion(_ req: Request, ws: WebSocket, store: WebSocketManagerStore) async {
+    do {
+      let discussionDetails = try await getDetails(req)
+
+      let discussionManager = try WebSocketManager(
+        threadLabel: discussionDetails.requireID().uuidString)
+      discussionManager.addConnection(ws, req: req)
+      let discussionId = try discussionDetails.requireID()
+
+      // Safely add the WebSocketManager to the store
+      await store.addWebSocket(for: discussionId, manager: discussionManager)
+
+    } catch {
+      print("ERROR CREATING DISCUSSION WEBSOCKET: \(error)")
+    }
+  }
+
+  @Sendable
+  func addComment(_ req: Request) async throws -> Comment {
+    let discussionId = try req.parameters.require("discussionId")
+    let content = try req.query.get(String.self, at: "content")
+
+    let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+    guard let discussion = discussion else {
+      throw Abort(.notFound, reason: "Discussion not found")
     }
 
-    @Sendable
-    func addComment(_ req: Request) async throws -> Comment {
-        let discussionId = try req.parameters.require("discussionId")
-        let content = try req.query.get(String.self, at: "content")
+    let user = try await req.user()
+    let userId = try user.requireID()
 
-        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
+    let participant = try await Participant.query(on: req.db)
+      .filter(\.$discussion.$id == discussion.requireID())
+      .filter(\.$user.$id == userId)
+      .first()
 
-        let user = try await req.user()
-        let userId = try user.requireID()
-
-        let participant = try await Participant.query(on: req.db)
-            .filter(\.$discussion.$id == discussion.requireID())
-            .filter(\.$user.$id == userId)
-            .first()
-
-        guard let participant = participant else {
-            throw Abort(.notFound, reason: "Participant not found")
-        }
-
-        let comment = try Comment(content: content, discussionId: discussion.requireID(), participantId: participant.requireID())
-
-        try await comment.save(on: req.db)
-
-        try await broadcastUpdate(req, discussionId: discussion.requireID())
-
-        return comment
+    guard let participant = participant else {
+      throw Abort(.notFound, reason: "Participant not found")
     }
 
-    @Sendable
-    func deleteComment(_ req: Request) async throws -> Response {
-        let discussionId = try req.parameters.require("discussionId")
-        let commentId = try req.parameters.require("commentId")
+    let comment = try Comment(
+      content: content, discussionId: discussion.requireID(), participantId: participant.requireID()
+    )
 
-        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
+    try await comment.save(on: req.db)
 
-        let comment = try await Comment.find(UUID(uuidString: commentId), on: req.db)
-        guard let comment = comment else {
-            throw Abort(.notFound, reason: "Comment not found")
-        }
+    try await broadcastUpdate(req, discussionId: discussion.requireID())
 
-        try await comment.delete(on: req.db)
+    return comment
+  }
 
-        try await broadcastUpdate(req, discussionId: discussion.requireID())
+  @Sendable
+  func deleteComment(_ req: Request) async throws -> Response {
+    let discussionId = try req.parameters.require("discussionId")
+    let commentId = try req.parameters.require("commentId")
 
-        return req.redirect(to: "/api/discussions/\(discussionId)/comments")
+    let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+    guard let discussion = discussion else {
+      throw Abort(.notFound, reason: "Discussion not found")
     }
 
-    @Sendable
-    func isParticipant(_ req: Request) async throws -> Bool {
-        let discussionId = try req.parameters.require("discussionId")
-
-        let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
-        guard let discussion = discussion else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
-
-        let user = try await req.user()
-        print(try await req.user())
-        let testParticipant = try await Participant.query(on: req.db)
-            .filter(\.$discussion.$id == discussion.requireID())
-            .filter(\.$user.$id == user.requireID())
-            .first()
-
-        return testParticipant != nil
+    let comment = try await Comment.find(UUID(uuidString: commentId), on: req.db)
+    guard let comment = comment else {
+      throw Abort(.notFound, reason: "Comment not found")
     }
 
-    @Sendable func getParticipantById(_ req: Request) async throws -> Participant {
-        let participantId = try req.parameters.require("participantId")
-        let participantUUID = UUID(uuidString: participantId)
+    try await comment.delete(on: req.db)
 
-        guard let participantUUID = participantUUID else {
-            throw Abort(.notFound, reason: "Participant not found")
-        }
+    try await broadcastUpdate(req, discussionId: discussion.requireID())
 
-        // let participant = try await Participant
-        // .find(UUID(uuidString: participantId), on: req.db)
-        
-        let participant = try await Participant.query(on: req.db)
-        .with(\.$user)
-        .filter(\.$id == participantUUID)
-        .first()
+    return req.redirect(to: "/api/discussions/\(discussionId)/comments")
+  }
 
-        guard let participant = participant else {
-            throw Abort(.notFound, reason: "Participant not found")
-        }
+  @Sendable
+  func isParticipant(_ req: Request) async throws -> Bool {
+    let discussionId = try req.parameters.require("discussionId")
 
-        return participant
+    let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
+    guard let discussion = discussion else {
+      throw Abort(.notFound, reason: "Discussion not found")
     }
 
-    @Sendable func getParticipantByUserId(_ req: Request) async throws -> Participant {
-        let userId = try req.parameters.require("userId")
-        let userUUID = UUID(uuidString: userId)
+    let user = try await req.user()
+    print(try await req.user())
+    let testParticipant = try await Participant.query(on: req.db)
+      .filter(\.$discussion.$id == discussion.requireID())
+      .filter(\.$user.$id == user.requireID())
+      .first()
 
-        guard let userUUID = userUUID else {
-            throw Abort(.notFound, reason: "User not found")
-        }
+    return testParticipant != nil
+  }
 
-        let discussionId = try req.parameters.require("discussionId")
-        let discussionUUID = UUID(uuidString: discussionId)
+  @Sendable func getParticipantById(_ req: Request) async throws -> Participant {
+    let participantId = try req.parameters.require("participantId")
+    let participantUUID = UUID(uuidString: participantId)
 
-        guard let discussionUUID = discussionUUID else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
-
-        let participant = try await Participant.query(on: req.db)
-        .with(\.$discussion)
-        .with(\.$user)
-        .filter(\.$discussion.$id == discussionUUID)
-        .filter(\.$user.$id == userUUID)
-        .first()
-
-        guard let participant = participant else {
-            throw Abort(.notFound, reason: "Participant not found")
-        }
-
-        return participant
+    guard let participantUUID = participantUUID else {
+      throw Abort(.notFound, reason: "Participant not found")
     }
 
-    @Sendable func deleteCommentsFromParticipant(_ req: Request) async throws -> Response {
-        let discussionId = try req.parameters.require("discussionId")
-        let discussionUUID = UUID(uuidString: discussionId)
+    // let participant = try await Participant
+    // .find(UUID(uuidString: participantId), on: req.db)
 
-        guard let discussionUUID = discussionUUID else {
-            throw Abort(.notFound, reason: "Discussion not found")
-        }
+    let participant = try await Participant.query(on: req.db)
+      .with(\.$user)
+      .filter(\.$id == participantUUID)
+      .first()
 
-        let user = try await req.user()
-        let userUUID = try user.requireID()
-
-        let participant = try await Participant.query(on: req.db)
-        .with(\.$discussion)
-        .filter(\.$discussion.$id == discussionUUID)
-        .filter(\.$user.$id == userUUID)
-        .first()
-
-        guard let participant = participant else {
-            throw Abort(.notFound, reason: "Participant not found")
-        }
-
-        try await Comment.query(on: req.db)
-        .filter(\.$participant.$id == participant.requireID())
-        .delete()
-
-        try await broadcastUpdate(req, discussionId: discussionUUID)
-
-        return Response(status: .ok, body: .init(string: "Successfully deleted comments"))
+    guard let participant = participant else {
+      throw Abort(.notFound, reason: "Participant not found")
     }
+
+    return participant
+  }
+
+  @Sendable func getParticipantByUserId(_ req: Request) async throws -> Participant {
+    let userId = try req.parameters.require("userId")
+    let userUUID = UUID(uuidString: userId)
+
+    guard let userUUID = userUUID else {
+      throw Abort(.notFound, reason: "User not found")
+    }
+
+    let discussionId = try req.parameters.require("discussionId")
+    let discussionUUID = UUID(uuidString: discussionId)
+
+    guard let discussionUUID = discussionUUID else {
+      throw Abort(.notFound, reason: "Discussion not found")
+    }
+
+    let participant = try await Participant.query(on: req.db)
+      .with(\.$discussion)
+      .with(\.$user)
+      .filter(\.$discussion.$id == discussionUUID)
+      .filter(\.$user.$id == userUUID)
+      .first()
+
+    guard let participant = participant else {
+      throw Abort(.notFound, reason: "Participant not found")
+    }
+
+    return participant
+  }
+
+  @Sendable func deleteCommentsFromParticipant(_ req: Request) async throws -> Response {
+    let discussionId = try req.parameters.require("discussionId")
+    let discussionUUID = UUID(uuidString: discussionId)
+
+    guard let discussionUUID = discussionUUID else {
+      throw Abort(.notFound, reason: "Discussion not found")
+    }
+
+    let user = try await req.user()
+    let userUUID = try user.requireID()
+
+    let participant = try await Participant.query(on: req.db)
+      .with(\.$discussion)
+      .filter(\.$discussion.$id == discussionUUID)
+      .filter(\.$user.$id == userUUID)
+      .first()
+
+    guard let participant = participant else {
+      throw Abort(.notFound, reason: "Participant not found")
+    }
+
+    try await Comment.query(on: req.db)
+      .filter(\.$participant.$id == participant.requireID())
+      .delete()
+
+    try await broadcastUpdate(req, discussionId: discussionUUID)
+
+    return Response(status: .ok, body: .init(string: "Successfully deleted comments"))
+  }
 
 }
