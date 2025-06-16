@@ -89,7 +89,7 @@ struct AppTests {
         },
         afterResponse: { res in
           authToken = nil
-          #expect(res.status == .seeOther)
+          #expect(res.status == .ok)
         })
     }
   }
@@ -341,7 +341,7 @@ struct AppTests {
           req.headers.bearerAuthorization = .init(token: authToken!)
         },
         afterResponse: { res in
-          #expect(res.status == .seeOther)
+          #expect(res.status == .ok)
         })
     }
   }
@@ -356,7 +356,7 @@ struct AppTests {
           req.headers.bearerAuthorization = .init(token: authToken2!)
         },
         afterResponse: { res in
-          #expect(res.status == .seeOther)
+          #expect(res.status == .ok)
         })
     }
   }

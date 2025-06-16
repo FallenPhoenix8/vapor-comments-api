@@ -2,37 +2,37 @@ name: Local
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: macos-latest
 
-
     steps:
-    - uses: SwiftyLab/setup-swift@latest
-    - name: Get swift version
-      run: swift --version
-    - name: Get swift version in macOS
-      if: runner.os == 'macOS'
-      run: xcrun --toolchain ${{ env.TOOLCHAINS }} swift --version
-    - uses: actions/checkout@v4
-    - name: Install PostgreSQL
-      run: |
-        brew install postgresql@14
-        brew services start postgresql@14
-    - name: Create PostgreSQL user and database
-      run: |
-        psql -U $(whoami) postgres -c "CREATE USER vapor WITH PASSWORD 'vapor';"
-        psql -U $(whoami) postgres -c "CREATE DATABASE \"vapor-comments\" OWNER vapor;"
-    - name: Build
-      run: sh build.sh
-    - name: Run tests
-      env:
-        DB_HOST: localhost
-        DB_USERNAME: vapor
-        DB_PASSWORD: vapor
-        DB_NAME: vapor-comments
-      run: swift test
+      - uses: SwiftyLab/setup-swift@latest
+      - name: Get swift version
+        run: swift --version
+      - name: Get swift version in macOS
+        if: runner.os == 'macOS'
+        run: xcrun --toolchain ${{ env.TOOLCHAINS }} swift --version
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL
+        run: |
+          brew install postgresql@14
+          brew services start postgresql@14
+      - name: Create PostgreSQL user and database
+        run: |
+          psql -U $(whoami) postgres -c "CREATE USER vapor WITH PASSWORD 'vapor';"
+          psql -U $(whoami) postgres -c "CREATE DATABASE \"vapor-comments\" OWNER vapor;"
+      - name: Build
+        run: sh build.sh
+      - name: Run tests
+        env:
+          DB_HOST: localhost
+          DB_USERNAME: vapor
+          DB_PASSWORD: vapor
+          DB_NAME: vapor-comments
+          FRONTEND_URL: http://localhost:3000
+        run: swift test

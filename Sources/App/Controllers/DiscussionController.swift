@@ -12,7 +12,94 @@ func broadcastUpdate(_ req: Request, discussionId: UUID) async throws {
     wsManager.broadcast(discussionDetails.getJSONData(), messageType: "discussion-update")
   }
 }
+/// Returns a list of all discussions.
+///
+/// - Returns: [Discussion]
+///
+/// - GET /api/discussions
 
+/// Returns whether the given title is taken.
+///
+/// - Parameters:
+///   - title: The title to check.
+/// - Returns: Bool
+///
+/// - GET /api/discussions/is-title-taken/:title
+
+/// Creates a new discussion with the given title.
+///
+/// - Parameters:
+///   - title: The title of the discussion.
+/// - Returns: Discussion
+///
+/// - POST /api/discussions/create/:title
+
+/// Deletes the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion to delete.
+/// - Returns: Void
+///
+/// - DELETE /api/discussions/:discussionId/delete
+
+/// Leaves the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion to leave.
+/// - Returns: Void
+///
+/// - DELETE /api/discussions/:discussionId/leave
+
+/// Joins the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion to join.
+/// - Returns: Void
+///
+/// - POST /api/discussions/:discussionId/join
+
+/// Returns the details of the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion to get the details of.
+/// - Returns: Discussion
+///
+/// - GET /api/discussions/:discussionId/details
+
+/// Returns whether the user is a participant of the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion to check.
+/// - Returns: Bool
+///
+/// - GET /api/discussions/:discussionId/is-participant
+
+/// Returns the participant with the given id in the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion.
+///   - participantId: The id of the participant.
+/// - Returns: Participant
+///
+/// - GET /api/discussions/:discussionId/participants/:participantId
+
+/// Returns the participant with the given user id in the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion.
+///   - userId: The id of the user.
+/// - Returns: Participant
+///
+/// - GET /api/discussions/:discussionId/participants/user/:userId
+
+/// Deletes all comments from the participant with the given id in the discussion with the given id.
+///
+/// - Parameters:
+///   - discussionId: The id of the discussion.
+///   - participantId: The id of the participant.
+/// - Returns: Void
+///
+/// - DELETE /api/discussions/:discussionId/participants/:participantId/comments
 struct DiscussionController: RouteCollection {
   func boot(routes: RoutesBuilder) throws {
     // let api = routes.grouped("api")

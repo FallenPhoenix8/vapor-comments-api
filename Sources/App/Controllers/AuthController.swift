@@ -2,6 +2,42 @@ import Fluent
 import JWT
 import Vapor
 
+/// Auth Routes
+/// POST /api/auth/register: Register a new user with parameters:
+///   - username: String
+///   - password: String
+///   - confirmPassword: String
+
+/// GET /api/auth/register: Method not allowed
+
+/// Discussion Routes
+/// GET /api/discussions: Get all discussions
+/// GET /api/discussions/is-title-taken/:title: Check if a discussion title is taken
+
+/// POST /api/discussions/create/:title: Create a new discussion (Protected Route)
+
+/// DELETE /api/discussions/:discussionId/delete: Delete a discussion (Protected Route)
+
+/// DELETE /api/discussions/:discussionId/leave: Leave a discussion (Protected Route)
+
+/// POST /api/discussions/:discussionId/join: Join a discussion (Protected Route)
+
+/// GET /api/discussions/:discussionId/details: Get details of a discussion (Protected Route)
+
+/// WebSocket /api/discussions/:discussionId/ws: WebSocket for discussion updates (Protected Route)
+
+/// GET /api/discussions/:discussionId/is-participant: Check if user is a participant (Protected Route)
+
+/// Comment Routes
+/// POST /api/discussions/:discussionId/comments/add: Add a comment to a discussion (Protected Route)
+
+/// DELETE /api/discussions/:discussionId/comments/delete/:commentId: Delete a comment (Protected Route)
+
+/// Participant Routes
+/// GET /api/discussions/:discussionId/participants/:participantId: Get participant by ID (Protected Route)
+
+/// GET /api/discussions/:discussionId/participants/user/:userId: Get participant by user ID (Protected Route)
+
 final class AuthController: RouteCollection, Sendable {
   func boot(routes: RoutesBuilder) throws {
     let auth = routes.grouped("auth")
@@ -127,13 +163,13 @@ final class AuthController: RouteCollection, Sendable {
     // )
 
     // print(req.cookies)
-    return req.redirect(to: "/")
+    return Response(status: .ok)
   }
 
   @Sendable func deleteMe(req: Request) async throws -> Response {
     let user = try await req.user()
     try await user.delete(on: req.db)
-    return req.redirect(to: "/")
+    return Response(status: .ok)
   }
 
   @Sendable func isAuthenticated(req: Request) async -> Response {
