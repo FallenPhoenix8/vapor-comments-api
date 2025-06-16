@@ -17,10 +17,33 @@ final class WebSocketManager: @unchecked Sendable {
   /// The dispatch queue used to synchronize access to the `wsConnections` array.
   private let queue: DispatchQueue
 
+  private var heartbeatTimers: [(WebSocket, Timer)] = []
+  private let heartbeatTimeout: TimeInterval = 60  // 60 seconds -> 1 minute
+
   /// Initializes a new instance of `WebSocketManager`.
   /// - Parameter threadLabel: This is the label used to create the dispatch queue. It is used to identify the queue.
   init(threadLabel: String) {
     queue = .init(label: threadLabel)
+  }
+
+  func handleHeartbeat(
+    from ws: WebSocket, participantOnlineHandler: @escaping @Sendable () async -> Void
+  ) async {
+    // Reset heartbeat timer
+    if let index = heartbeatTimers.firstIndex(where: { $0.0 === ws }) {
+      heartbeatTimers[index].1.invalidate()
+    }
+
+    // Set up a new heartbeat timer
+    let timer = Timer.scheduledTimer(withTimeInterval: heartbeatTimeout, repeats: false) {
+      [weak self] _ in
+      Task.init {
+        await participantOnlineHandler()
+      }
+      self?.removeConnection(ws)
+    }
+
+    heartbeatTimers.append((ws, timer))
   }
 
   /// Adds a new WebSocket connection to the manager.
@@ -48,6 +71,12 @@ final class WebSocketManager: @unchecked Sendable {
             return
           }
           Task.init {
+
+            await self.handleHeartbeat(from: ws) {
+              try? await Participant.updateLastActive(participantUUID, on: req.db)
+              try? await Participant.updateStatus(participantUUID, status: .inactive, on: req.db)
+            }
+
             try? await Participant.updateLastActive(participantUUID, on: req.db)
             try? await Participant.updateStatus(participantUUID, status: .active, on: req.db)
 
@@ -78,6 +107,9 @@ final class WebSocketManager: @unchecked Sendable {
       }
 
       type(of: self).wsConnections.append(ws)
+
+      // Set up heartbeat timer
+
     }
   }
 
@@ -86,6 +118,12 @@ final class WebSocketManager: @unchecked Sendable {
   private func removeConnection(_ ws: WebSocket) {
     queue.sync {
       type(of: self).wsConnections = type(of: self).wsConnections.filter { $0 !== ws }
+    }
+
+    // Invalidate heartbeat timer
+    if let index = heartbeatTimers.firstIndex(where: { $0.0 === ws }) {
+      heartbeatTimers[index].1.invalidate()
+      heartbeatTimers.remove(at: index)
     }
   }
 
@@ -96,7 +134,7 @@ final class WebSocketManager: @unchecked Sendable {
       var jsonMessage = try? JSONSerialization.jsonObject(with: message, options: [])
         as? [String: Any]
     else {
-      print("Failed to convert message to JSON")
+      print("Failed to convert message to JSON", message)
       return
     }
 
@@ -105,7 +143,7 @@ final class WebSocketManager: @unchecked Sendable {
     let fullJSONData = try? JSONSerialization.data(withJSONObject: jsonMessage, options: [])
 
     guard let fullJSONData = fullJSONData else {
-      print("Failed to convert message to JSON")
+      print("Failed to convert message to JSON", message)
       return
     }
 

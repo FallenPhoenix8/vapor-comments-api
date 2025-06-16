@@ -162,6 +162,11 @@ struct DiscussionController: RouteCollection {
       throw Abort(.notFound, reason: "Participant not found")
     }
 
+    guard participant.isAuthor == false else {
+      throw Abort(
+        .badRequest, reason: "Cannot leave discussion as author. Please delete it instead.")
+    }
+
     try await participant.delete(on: req.db)
 
     try await broadcastUpdate(req, discussionId: discussion.requireID())
@@ -252,7 +257,7 @@ struct DiscussionController: RouteCollection {
     }
 
     let user = try await req.user()
-    print(try await req.user())
+    // print(try await req.user())
     let testParticipant = try await Participant.query(on: req.db)
       .filter(\.$discussion.$id == discussion.requireID())
       .filter(\.$user.$id == user.requireID())
