@@ -45,6 +45,7 @@ struct DiscussionController: RouteCollection {
     protectedParticipants.get(":participantId", use: getParticipantById)
     protectedParticipants.get("user", ":userId", use: getParticipantByUserId)
     protectedParticipants.delete(":participantId", "comments", use: deleteCommentsFromParticipant)
+    protectedParticipants.delete("delete", use: deleteAllParticipantsFromDiscussion)
   }
 
   @Sendable
@@ -345,5 +346,31 @@ struct DiscussionController: RouteCollection {
   @Sendable func isTitleTaken(_ req: Request) async throws -> Bool {
     let title = try req.parameters.require("title")
     return try await Discussion.isTitleTaken(title, on: req.db)
+  }
+
+  @Sendable func deleteAllParticipantsFromDiscussion(_ req: Request) async throws -> Response {
+    let discussionId = try req.parameters.require("discussionId")
+    let discussionUUID = UUID(uuidString: discussionId)
+
+    guard let discussionUUID = discussionUUID else {
+      throw Abort(.notFound, reason: "Discussion not found")
+    }
+
+    let participants = try await Participant.query(on: req.db)
+      .with(\.$discussion)
+      .with(\.$comments)
+      .filter(\.$discussion.$id == discussionUUID)
+      .all()
+
+    /// Deleting all participants and their comments for this discussion
+    for participant in participants {
+      try await Comment.query(on: req.db)
+        .filter(\.$participant.$id == participant.requireID())
+        .delete()
+
+      try await participant.delete(on: req.db)
+    }
+
+    return Response(status: .ok, body: .init(string: "Successfully deleted all participants"))
   }
 }
