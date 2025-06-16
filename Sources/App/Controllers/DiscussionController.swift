@@ -78,6 +78,27 @@ struct DiscussionController: RouteCollection {
   func delete(_ req: Request) async throws -> Response {
     let discussionId = try req.parameters.require("discussionId")
 
+    guard let discussionUUID = UUID(uuidString: discussionId) else {
+      throw Abort(.notFound, reason: "Discussion not found")
+    }
+
+    let author = try await Participant.query(on: req.db)
+      .filter(\.$discussion.$id == discussionUUID)
+      .filter(\.$isAuthor == true)
+      .with(\.$user)
+      .first()
+
+    guard let author = author else {
+      throw Abort(.notFound, reason: "Author not found")
+    }
+
+    let user = try await req.user()
+    guard author.user.id == user.id else {
+      throw Abort(.unauthorized, reason: "You are not the author of this discussion")
+    }
+
+    try await author.delete(on: req.db)
+
     let discussion = try await Discussion.find(UUID(uuidString: discussionId), on: req.db)
     guard let discussion = discussion else {
       throw Abort(.notFound, reason: "Discussion not found")
