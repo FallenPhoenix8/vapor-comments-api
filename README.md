@@ -13,6 +13,16 @@ The `vapor-comments-api`, a backend service built with Swift's Vapor framework, 
 
 # Getting started
 
+## Environemntal variables
+
+- **DB_HOST**: The hostname for your PostgreSQL database.
+- **DB_USERNAME**: The username for connecting to your PostgreSQL database.
+- **DB_PASSWORD**: The password for connecting to your PostgreSQL database.
+- **DB_NAME**: The name of your PostgreSQL database.
+- **JWT_SECRET**: The secret key used for signing and verifying JSON Web Tokens.
+- **FRONTEND_URL**: The URL of the frontend application, used for CORS configuration.
+- **PORT**: The port on which the Vapor server will run (default is 8080).
+
 ## Running dev scripts
 
 In order to run the dev scripts, you need to have `watchexec` installed on your system.
